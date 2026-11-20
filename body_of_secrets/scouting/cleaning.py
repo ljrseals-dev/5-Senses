@@ -233,8 +233,6 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
     oversized = [path for path in files if path.stat().st_size > max_file_bytes]
     if oversized:
         raise ValueError(f"input exceeds max_file_bytes: {oversized[0]}")
-    if not files:
-        return []
     ranker = EMOCRRanker(iterations=iterations).fit(
         path.read_text(encoding="utf-8", errors="strict") for path in files
     )
