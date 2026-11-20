@@ -211,9 +211,12 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
                     review_dir: str | Path | None = None,
                     iterations: int = 12) -> list[CleanResult]:
     """Fit one corpus-local EM profile, then clean supported text files to a new tree."""
-    source = Path(source_dir).resolve()
+    raw_source = Path(source_dir)
+    if raw_source.is_symlink():
+        raise ValueError("source_dir must not be a symlink")
+    source = raw_source.resolve()
     destination = Path(destination_dir).resolve()
-    if not source.is_dir() or source.is_symlink():
+    if not source.is_dir():
         raise ValueError("source_dir must be a regular directory")
     if destination == source or source in destination.parents:
         raise ValueError("destination_dir must not be inside source_dir")
@@ -230,6 +233,8 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
     planned_outputs = [destination / path.relative_to(source) for path in files]
     if any(path.exists() for path in planned_outputs):
         raise FileExistsError("one or more cleaned output files already exist")
+    if (destination / "cleaning_manifest.json").exists():
+        raise FileExistsError(destination / "cleaning_manifest.json")
     if review_dir is not None:
         review_root = Path(review_dir).resolve()
         planned_reviews = [review_root / (str(path.relative_to(source)) + ".review.jsonl")
@@ -293,6 +298,8 @@ def clean_file(source: str | Path, destination: str | Path, *,
         def replace_token(match: re.Match[str]) -> str:
             original = match.group(0)
             replacement = accepted.get(original.casefold())
+            if original != original.lower():
+                return original
             return replacement if replacement is not None else original
         corrected = _TOKEN_RE.sub(replace_token, cleaned)
         for observed, candidate in accepted.items():
