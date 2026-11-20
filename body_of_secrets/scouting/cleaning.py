@@ -1,0 +1,247 @@
+"""Evidence-preserving OCR cleanup with a corpus-adapted EM candidate ranker.
+
+The EM stage ranks observed token variants; it never invents a correction outside
+the corpus vocabulary and never rewrites raw inputs. Conservative defaults send
+ambiguous proposals to review rather than silently changing historical text.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import math
+import re
+import unicodedata
+from collections import Counter, defaultdict
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Iterable
+
+_TOKEN_RE = re.compile(r"[^\W_]+(?:['’][^\W_]+)?", re.UNICODE)
+_CONFUSIONS = (
+    ("rn", "m"), ("m", "rn"), ("cl", "d"), ("d", "cl"),
+    ("vv", "w"), ("w", "vv"), ("0", "o"), ("o", "0"),
+    ("1", "l"), ("l", "1"), ("5", "s"), ("s", "5"),
+    ("8", "B"), ("B", "8"), ("ﬁ", "fi"), ("ﬂ", "fl"),
+)
+_SPACE_RE = re.compile(r"[ \t\f\v]+")
+
+
+@dataclass(frozen=True)
+class CorrectionProposal:
+    observed: str
+    candidate: str
+    posterior: float
+    margin: float
+    action: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class CleanResult:
+    source: str
+    output: str
+    raw_sha256: str
+    cleaned_sha256: str
+    edits: tuple[dict[str, object], ...]
+    proposals: tuple[CorrectionProposal, ...]
+
+
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def normalize_layout(text: str) -> str:
+    """Apply reversible, content-neutral Unicode and whitespace cleanup only."""
+    text = unicodedata.normalize("NFC", text.replace("\r\n", "\n").replace("\r", "\n"))
+    text = text.replace("\x00", "")
+    text = "".join(
+        ch for ch in text
+        if ch in "\n\t" or unicodedata.category(ch) not in {"Cc", "Cf"}
+    )
+    lines = [_SPACE_RE.sub(" ", line).rstrip() for line in text.split("\n")]
+    # Collapse runs of blank lines but preserve paragraph boundaries.
+    output: list[str] = []
+    blank = False
+    for line in lines:
+        if not line.strip():
+            if output and not blank:
+                output.append("")
+            blank = True
+        else:
+            output.append(line)
+            blank = False
+    return "\n".join(output).strip() + ("\n" if text.endswith("\n") else "")
+
+
+def _token_candidates(token: str, vocabulary: set[str]) -> set[str]:
+    lower = token.casefold()
+    candidates: set[str] = set()
+    for source, target in _CONFUSIONS:
+        start = 0
+        while True:
+            index = lower.find(source, start)
+            if index < 0:
+                break
+            candidate = lower[:index] + target + lower[index + len(source):]
+            if candidate in vocabulary and candidate != lower:
+                candidates.add(candidate)
+            start = index + 1
+    return candidates
+
+
+class EMOCRRanker:
+    """Corpus-local noisy-channel EM ranker over observed vocabulary.
+
+    This is unsupervised adaptation, not a pretrained model. The seeded
+    confusion channel is deliberately small and all output remains auditable.
+    """
+
+    def __init__(self, *, iterations: int = 12, smoothing: float = 0.1):
+        if iterations < 1 or iterations > 100:
+            raise ValueError("iterations must be between 1 and 100")
+        if smoothing <= 0:
+            raise ValueError("smoothing must be positive")
+        self.iterations = iterations
+        self.smoothing = smoothing
+        self.priors: dict[str, float] = {}
+        self.channel: dict[tuple[str, str], float] = {}
+
+    def fit(self, texts: Iterable[str]) -> "EMOCRRanker":
+        counts: Counter[str] = Counter()
+        for text in texts:
+            counts.update(token.casefold() for token in _TOKEN_RE.findall(text))
+        total = sum(counts.values())
+        if not total:
+            self.priors = {}
+            self.channel = {}
+            return self
+
+        vocab = set(counts)
+        priors = {word: (count + self.smoothing) /
+                  (total + self.smoothing * len(vocab))
+                  for word, count in counts.items()}
+        observations: dict[str, list[str]] = {}
+        for observed in vocab:
+            candidates = sorted(_token_candidates(observed, vocab))
+            if candidates:
+                observations[observed] = candidates
+
+        # Initialize a small symmetric channel. EM re-estimates latent source
+        # frequencies and per-observation correction probabilities.
+        channel = {(obs, cand): 1.0 / len(cands)
+                   for obs, cands in observations.items() for cand in cands}
+        for _ in range(self.iterations):
+            expected_true: Counter[str] = Counter(counts)
+            expected_channel: Counter[tuple[str, str]] = Counter()
+            for observed, candidates in observations.items():
+                mass = float(counts[observed])
+                weights = {
+                    cand: max(channel[(observed, cand)], 1e-12) * priors[cand]
+                    for cand in candidates
+                }
+                denom = sum(weights.values())
+                if denom <= 0:
+                    continue
+                for candidate, weight in weights.items():
+                    responsibility = mass * weight / denom
+                    expected_true[observed] -= responsibility
+                    expected_true[candidate] += responsibility
+                    expected_channel[(observed, candidate)] += responsibility
+            expected_total = sum(expected_true.values())
+            priors = {
+                word: (expected_true[word] + self.smoothing) /
+                (expected_total + self.smoothing * len(vocab))
+                for word in vocab
+            }
+            for observed, candidates in observations.items():
+                denom = sum(expected_channel[(observed, c)] for c in candidates)
+                for candidate in candidates:
+                    channel[(observed, candidate)] = (
+                        expected_channel[(observed, candidate)] + self.smoothing
+                    ) / (denom + self.smoothing * len(candidates))
+
+        self.priors = priors
+        self.channel = channel
+        return self
+
+    def propose(self, text: str, *, accept_posterior: float = 0.995,
+                accept_margin: float = 0.20) -> list[CorrectionProposal]:
+        if not 0.5 < accept_posterior <= 1.0:
+            raise ValueError("accept_posterior must be in (0.5, 1]")
+        if not 0 < accept_margin < 1:
+            raise ValueError("accept_margin must be in (0, 1)")
+        vocabulary = set(self.priors)
+        proposals: list[CorrectionProposal] = []
+        seen: set[str] = set()
+        for token in _TOKEN_RE.findall(text):
+            observed = token.casefold()
+            if observed in seen or observed in vocabulary:
+                continue
+            seen.add(observed)
+            candidates = _token_candidates(observed, vocabulary)
+            if not candidates:
+                continue
+            # Do not auto-correct capitalized tokens: likely names, headings,
+            # and sentence-initial words need review.
+            weights = {
+                candidate: self.channel.get((observed, candidate), 1e-12)
+                * self.priors.get(candidate, 0.0)
+                for candidate in candidates
+            }
+            denom = sum(weights.values())
+            if denom <= 0:
+                continue
+            ranked = sorted(
+                ((candidate, weight / denom) for candidate, weight in weights.items()),
+                key=lambda item: item[1], reverse=True,
+            )
+            best, posterior = ranked[0]
+            second = ranked[1][1] if len(ranked) > 1 else 0.0
+            margin = posterior - second
+            auto = token == token.lower() and posterior >= accept_posterior and margin >= accept_margin
+            proposals.append(CorrectionProposal(
+                observed=token, candidate=best, posterior=round(posterior, 6),
+                margin=round(margin, 6),
+                action="AUTO_ACCEPT" if auto else "REVIEW",
+                reason=("EM posterior and margin exceed conservative thresholds"
+                        if auto else "uncertain or protected token; human review required"),
+            ))
+        return proposals
+
+
+def clean_file(source: str | Path, destination: str | Path, *,
+               ranker: EMOCRRanker | None = None,
+               review_path: str | Path | None = None) -> CleanResult:
+    """Clean one UTF-8 text file into a new path; refuse overwrite and preserve raw."""
+    src, dst = Path(source), Path(destination)
+    if not src.is_file() or src.is_symlink():
+        raise ValueError("source must be a regular, non-symlink file")
+    if dst.exists():
+        raise FileExistsError(dst)
+    raw_bytes = src.read_bytes()
+    raw_text = raw_bytes.decode("utf-8", errors="strict")
+    cleaned = normalize_layout(raw_text)
+    proposals = tuple(ranker.propose(cleaned)) if ranker else ()
+    edits: list[dict[str, object]] = []
+    if cleaned != raw_text:
+        edits.append({
+            "kind": "layout_normalization", "before_sha256": _sha256(raw_text.encode("utf-8")),
+            "after_sha256": _sha256(cleaned.encode("utf-8")),
+            "reason": "NFC, control-character removal, whitespace normalization",
+        })
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    dst.write_text(cleaned, encoding="utf-8", newline="")
+    if review_path is not None:
+        review = Path(review_path)
+        if review.exists():
+            raise FileExistsError(review)
+        review.parent.mkdir(parents=True, exist_ok=True)
+        review.write_text(
+            "".join(json.dumps(asdict(p), ensure_ascii=False) + "\n" for p in proposals),
+            encoding="utf-8",
+        )
+    return CleanResult(
+        source=str(src), output=str(dst), raw_sha256=_sha256(raw_bytes),
+        cleaned_sha256=_sha256(cleaned.encode("utf-8")),
+        edits=tuple(edits), proposals=proposals,
+    )
