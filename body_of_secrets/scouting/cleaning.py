@@ -162,7 +162,8 @@ class EMOCRRanker:
         self.channel = channel
         return self
 
-    def propose(self, text: str, *, accept_posterior: float = 0.995,
+    def propose(self, text: str, *, auto_accept: bool = False,
+                accept_posterior: float = 0.995,
                 accept_margin: float = 0.20) -> list[CorrectionProposal]:
         if not 0.5 < accept_posterior <= 1.0:
             raise ValueError("accept_posterior must be in (0.5, 1]")
@@ -199,7 +200,8 @@ class EMOCRRanker:
             best, posterior = ranked[0]
             second = ranked[1][1] if len(ranked) > 1 else 0.0
             margin = posterior - second
-            auto = token == token.lower() and posterior >= accept_posterior and margin >= accept_margin
+            auto = (auto_accept and token == token.lower()
+                    and posterior >= accept_posterior and margin >= accept_margin)
             proposals.append(CorrectionProposal(
                 observed=token, candidate=best, posterior=round(posterior, 6),
                 margin=round(margin, 6),
@@ -213,7 +215,8 @@ class EMOCRRanker:
 def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
                     review_dir: str | Path | None = None,
                     iterations: int = 12,
-                    max_file_bytes: int = 25 * 1024 * 1024) -> list[CleanResult]:
+                    max_file_bytes: int = 25 * 1024 * 1024,
+                    apply_em_corrections: bool = False) -> list[CleanResult]:
     """Fit one corpus-local EM profile, then clean supported text files to a new tree."""
     raw_source = Path(source_dir)
     if raw_source.is_symlink():
@@ -265,7 +268,10 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         relative = path.relative_to(source)
         output = destination / relative
         review = review_root / (str(relative) + ".review.jsonl") if review_root else None
-        results.append(clean_file(path, output, ranker=ranker, review_path=review))
+        results.append(clean_file(
+            path, output, ranker=ranker, review_path=review,
+            apply_em_corrections=apply_em_corrections,
+        ))
     manifest = {
         "schema_version": 1,
         "method": "corpus-local EM noisy-channel ranking plus conservative Unicode/layout normalization",
@@ -292,7 +298,8 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
 
 def clean_file(source: str | Path, destination: str | Path, *,
                ranker: EMOCRRanker | None = None,
-               review_path: str | Path | None = None) -> CleanResult:
+               review_path: str | Path | None = None,
+               apply_em_corrections: bool = False) -> CleanResult:
     """Clean one UTF-8 text file into a new path; refuse overwrite and preserve raw."""
     src, dst = Path(source), Path(destination)
     if not src.is_file() or src.is_symlink():
@@ -313,7 +320,7 @@ def clean_file(source: str | Path, destination: str | Path, *,
             "after_sha256": _sha256(cleaned.encode("utf-8")),
             "reason": "NFC, control-character removal, whitespace normalization",
         })
-    proposals = tuple(ranker.propose(cleaned)) if ranker else ()
+    proposals = tuple(ranker.propose(cleaned, auto_accept=apply_em_corrections)) if ranker else ()
     # Apply only explicitly high-confidence lowercase proposals. Each accepted
     # token is recorded; REVIEW proposals remain untouched in the text.
     accepted = {p.observed: p.candidate for p in proposals if p.action == "AUTO_ACCEPT"}
