@@ -276,6 +276,8 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         "schema_version": 1,
         "method": "corpus-local EM noisy-channel ranking plus conservative Unicode/layout normalization",
         "model_training": "unsupervised corpus-local profile; not a pretrained model",
+        "em_iterations": iterations,
+        "em_corrections_applied": apply_em_corrections,
         "source_root": str(source),
         "files": [
             {
