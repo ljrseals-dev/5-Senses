@@ -44,7 +44,9 @@ def test_em_ranker_proposes_only_observed_vocabulary_candidates() -> None:
     proposals = ranker.propose("rnodern")
     assert proposals
     assert proposals[0].candidate == "modern"
-    assert proposals[0].action == "AUTO_ACCEPT"
+    assert proposals[0].action == "REVIEW"
+    opted_in = ranker.propose("rnodern", auto_accept=True)
+    assert opted_in[0].action == "AUTO_ACCEPT"
 
 
 def test_em_ranker_does_not_rewrite_more_common_valid_word() -> None:
@@ -71,7 +73,7 @@ def test_clean_directory_mirrors_tree_and_leaves_raw_untouched(tmp_path: Path) -
     raw.write_text("modern modern modern modern modern modern modern rnodern\n")
     output = tmp_path / "cleaned"
 
-    results = clean_directory(source, output)
+    results = clean_directory(source, output, apply_em_corrections=True)
 
     assert len(results) == 1
     assert raw.exists()
@@ -89,3 +91,18 @@ def test_clean_directory_rejects_oversized_input_before_writing(tmp_path: Path) 
     with pytest.raises(ValueError, match="max_file_bytes"):
         clean_directory(source, output, max_file_bytes=3)
     assert not output.exists()
+
+
+def test_em_is_review_only_by_default(tmp_path: Path) -> None:
+    source = tmp_path / "incoming"
+    source.mkdir()
+    raw = source / "page.txt"
+    raw.write_text("modern modern modern modern modern modern modern rnodern\n")
+    output = tmp_path / "cleaned"
+    review = tmp_path / "review"
+
+    clean_directory(source, output, review_dir=review)
+
+    assert "rnodern" in (output / "page.txt").read_text()
+    review_text = (review / "page.txt.review.jsonl").read_text()
+    assert '"action": "REVIEW"' in review_text
