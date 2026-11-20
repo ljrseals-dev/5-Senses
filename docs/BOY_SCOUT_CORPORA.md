@@ -61,3 +61,43 @@ Record the evidence URL, date checked, edition, rights statement, and reviewer d
 Do not infer permission from a download button, Internet Archive availability, or a
 search result. Keep copyrighted modern reference sets out of the acquisition queue
 unless a lawful license or explicit authorization covers the intended use.
+
+
+## Curated first-wave catalog
+
+The initial edition-specific catalog is committed at
+`data/inventory/historical_reference_works.json`. It contains seven targets:
+Britannica 11th, 7th, and 9th editions; the Century Dictionary and Cyclopedia;
+the Catholic Encyclopedia; the Jewish Encyclopedia; and dated Wikimedia dumps.
+
+The catalog deliberately distinguishes:
+- **Scan availability** from clean machine-readable text.
+- A work's historical copyright status from a host site's HTML/database terms.
+- A reported open license from an independently checked release's exact license.
+- A complete print edition from verified digital volume coverage.
+
+### Current research findings
+
+- Britannica 11th is a 29-volume edition. Wikisource lists the scan-backed volume indexes,
+  but its transcription project labels the work incomplete. Do not mark it as complete
+  plain text until every volume and index has been checked.
+- Machine-readable Britannica 7th and 9th edition TXT/TEI releases are reported by the
+  Tu-Plogan historical Britannica project under CC BY 4.0. Pin the exact release and
+  preserve attribution before reuse.
+- The Century Dictionary bibliography exposes volume-level scans and OCR formats.
+  The catalog records a 24-part target, but the scout still needs to enumerate every
+  part and check missing/duplicate coverage.
+- The Catholic Encyclopedia's first edition and later special edition/supplements are
+  separate targets. New Advent's online transcription carries site-specific notices;
+  do not bulk-copy that site's HTML on the assumption that the underlying 1907-1912
+  print work is public domain.
+- The Jewish Encyclopedia's 12-volume historical work and a modern site's complete-text
+  claim do not, by themselves, establish permission to scrape that site's database.
+  Prefer independently rights-reviewed scans or transcriptions.
+
+### Catalog state
+
+Every entry currently says `NOT_DOWNLOADED`. This is an intentional, accurate state:
+the catalog is a verified research lead list, not a record of acquired files. Update
+the acquisition state only after recording the actual downloaded file list, byte sizes,
+SHA-256 hashes, edition/volume identifiers, retrieval date, and applicable license evidence.
