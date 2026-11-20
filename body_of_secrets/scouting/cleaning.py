@@ -211,7 +211,8 @@ class EMOCRRanker:
 
 def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
                     review_dir: str | Path | None = None,
-                    iterations: int = 12) -> list[CleanResult]:
+                    iterations: int = 12,
+                    max_file_bytes: int = 25 * 1024 * 1024) -> list[CleanResult]:
     """Fit one corpus-local EM profile, then clean supported text files to a new tree."""
     raw_source = Path(source_dir)
     if raw_source.is_symlink():
@@ -227,16 +228,23 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         if path.is_file() and not path.is_symlink()
         and path.suffix.lower() in {".txt", ".md", ".rst", ".text"}
     )
+    if max_file_bytes < 1:
+        raise ValueError("max_file_bytes must be positive")
+    oversized = [path for path in files if path.stat().st_size > max_file_bytes]
+    if oversized:
+        raise ValueError(f"input exceeds max_file_bytes: {oversized[0]}")
     if not files:
         return []
-    texts = [path.read_text(encoding="utf-8", errors="strict") for path in files]
-    ranker = EMOCRRanker(iterations=iterations).fit(texts)
+    ranker = EMOCRRanker(iterations=iterations).fit(
+        path.read_text(encoding="utf-8", errors="strict") for path in files
+    )
     # Preflight all output paths before writing any files.
     planned_outputs = [destination / path.relative_to(source) for path in files]
     if any(path.exists() for path in planned_outputs):
         raise FileExistsError("one or more cleaned output files already exist")
-    if (destination / "cleaning_manifest.json").exists():
-        raise FileExistsError(destination / "cleaning_manifest.json")
+    manifest_path = destination / "cleaning_manifest.json"
+    if manifest_path.exists() or manifest_path in planned_outputs:
+        raise FileExistsError(manifest_path)
     if review_dir is not None:
         review_root = Path(review_dir).resolve()
         planned_reviews = [review_root / (str(path.relative_to(source)) + ".review.jsonl")
@@ -249,9 +257,6 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         output = destination / relative
         review = Path(review_dir).resolve() / (str(relative) + ".review.jsonl") if review_dir else None
         results.append(clean_file(path, output, ranker=ranker, review_path=review))
-    manifest_path = destination / "cleaning_manifest.json"
-    if manifest_path.exists():
-        raise FileExistsError(manifest_path)
     manifest = {
         "schema_version": 1,
         "method": "corpus-local EM noisy-channel ranking plus conservative Unicode/layout normalization",
