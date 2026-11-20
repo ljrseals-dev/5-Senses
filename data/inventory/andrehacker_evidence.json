@@ -22944,6 +22944,23 @@
     "The 12 pattern-recognition exercise folders contain reports and source code; these are coursework/technical reports, not peer-reviewed papers.",
     "The report sources cite Bishop (2006) and Hastie (2011), but the latter citation is incomplete and needs bibliographic resolution.",
     "The logreg code explicitly cites Lewis et al. (2004), the JMLR RCV1 benchmark paper.",
-    "The account website links a BSc thesis about implementing a machine-learning algorithm and benchmarking Stratosphere/Hadoop; the PDF was not inspected."
+    "The account website links a BSc thesis about implementing a machine-learning algorithm and benchmarking Stratosphere/Hadoop; the PDF was not inspected.",
+    "Two subdirectories in fu-pattern-rec include separate permissive redistribution notices (Florian Knorn, u05-selection; Adi Navve, u10-nmf). Their scope is local and not a blanket license for the reports, datasets, plots, or whole repository."
+  ],
+  "license_notices": [
+    {
+      "repository": "andrehacker/fu-pattern-rec",
+      "path": "u05-selection/license.txt",
+      "copyright": "Copyright (c) 2005-2012, Florian Knorn",
+      "license_summary": "Permits source and binary redistribution with or without modification subject to retaining the notice, conditions, and disclaimer.",
+      "scope_note": "Local notice in u05-selection; exact set of covered files and third-party dataset scope not declared. Do not apply it to the entire repository."
+    },
+    {
+      "repository": "andrehacker/fu-pattern-rec",
+      "path": "u10-nmf/license.txt",
+      "copyright": "Copyright (c) 2011, Adi Navve",
+      "license_summary": "Permits source and binary redistribution with or without modification subject to retaining the notice, conditions, and disclaimer.",
+      "scope_note": "Local notice in u10-nmf; exact set of covered files and third-party dataset scope not declared. Do not apply it to the entire repository."
+    }
   ]
 }
