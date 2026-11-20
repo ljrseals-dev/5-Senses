@@ -1,0 +1,13 @@
+Hopfield Networks (1982)
+
+John Hopfield introduced a recurrent neural network model that functions as an associative memory.
+Patterns are stored as local minima of an energy function. Retrieval proceeds by energy minimization.
+The theoretical capacity of a Hopfield network with N neurons is approximately 0.15N random patterns
+before spurious states become problematic.
+
+The model uses a symmetric weight matrix with zero diagonal and bipolar or binary units.
+Asynchronous update guarantees convergence to a stable state.
+
+Key references:
+- Hopfield, J. J. (1982). Neural networks and physical systems with emergent collective computational abilities.
+- Amit, Gutfreund & Sompolinsky on statistical mechanics of Hopfield networks.

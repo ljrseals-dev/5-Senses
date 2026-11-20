@@ -1,0 +1,12 @@
+Self-Organizing Maps (Kohonen)
+
+Teuvo Kohonen developed the Self-Organizing Map (SOM), an unsupervised neural network that
+performs topology-preserving dimensionality reduction.
+
+Properties:
+- Competitive learning (winner-take-all plus neighbourhood adaptation).
+- The map preserves topological relationships present in the high-dimensional input.
+- Widely used for visualisation, clustering and feature extraction in the 1980s and 1990s.
+
+SOMs remain a classical alternative to supervised multilayer perceptrons when labelled
+data is scarce or when exploratory analysis is the goal.

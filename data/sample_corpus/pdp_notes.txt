@@ -1,0 +1,14 @@
+Parallel Distributed Processing (1986)
+
+David Rumelhart, James McClelland and the PDP Research Group published two volumes that
+re-introduced connectionism and distributed representations to the cognitive science and
+AI communities.
+
+Core ideas:
+- Knowledge is stored in the connections (weights) among simple processing units.
+- Learning occurs by adjusting those weights (e.g., the generalized delta rule / back-propagation).
+- Representations are distributed rather than localist.
+- The same network can exhibit rule-like behaviour without explicit symbolic rules.
+
+These volumes are foundational reading for anyone studying classical neural networks
+and the cognitive-science side of connectionism.
