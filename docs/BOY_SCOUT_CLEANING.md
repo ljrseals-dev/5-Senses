@@ -15,8 +15,8 @@ to train a pretrained neural model.
    whitespace cleanup, and collapse of excessive blank lines. It does not
    modernize spelling, remove hyphenation, rewrite punctuation, or change dates.
 4. **Corpus-local EM profile** — fit an unsupervised noisy-channel profile over
-   the observed corpus vocabulary using a small, explicit OCR-confusion seed
-   list. The latent word distribution and confusion probabilities are iteratively
+   the observed corpus vocabulary using a small, directional OCR-confusion seed
+   list (observed OCR form -> candidate printed form). The latent word distribution and confusion probabilities are iteratively
    re-estimated. Candidate words must already occur in the corpus.
 5. **Conservative correction gate** — only lowercase tokens may be automatically
    changed, and only when posterior probability is at least 0.995 and the
@@ -42,9 +42,18 @@ results = clean_directory(
 print(f"Processed {len(results)} text files")
 ```
 
-The destination tree is separate from the source tree. Existing output files
-are not overwritten. The cleaner refuses symlink source files and invalid UTF-8
-rather than silently replacing undecodable bytes.
+CLI equivalent:
+
+```bash
+body-of-secrets clean data/incoming/britannica data/processed/britannica \\
+  --review-dir data/review/britannica --iterations 12
+```
+
+The default per-file limit is 25 MiB and can be raised with
+`--max-file-bytes` when a legitimate OCR text volume is larger. The destination
+tree is separate from the source tree. Existing output files are not overwritten.
+The cleaner refuses symlink source files and invalid UTF-8 rather than silently
+replacing undecodable bytes.
 
 ## Important model boundary
 
