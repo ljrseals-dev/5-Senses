@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "catalog_kind": "historical_reference_work_targets",
+  "generated_for": "BODY OF SECRETS / 5-Senses Boy Scout",
+  "policy": {
+    "year_cutoff_is_not_a_legal_test": true,
+    "rights_review_required_before_bulk_acquisition": true,
+    "unknown_rights_action": "HOLD",
+    "keep_original_scans_and_archives": true,
+    "record_retrieval_date_and_sha256": true
+  },
+  "works": [
+    {
+      "id": "britannica-11-1911",
+      "title": "Encyclopaedia Britannica, 11th edition",
+      "edition": "11th",
+      "publication_years": "1910-1911",
+      "expected_volumes": 29,
+      "coverage_reference": "https://en.wikisource.org/wiki/EB11",
+      "candidate_sources": [
+        {
+          "url": "https://en.wikisource.org/wiki/1911_Encyclop%C3%A6dia_Britannica",
+          "format": "scan-backed transcription project",
+          "availability": "incomplete transcription; 29 scan-backed volume indexes listed",
+          "rights_state": "PUBLIC_DOMAIN_CANDIDATE",
+          "notes": "Use volume-by-volume proofread status; do not assume complete plain text."
+        },
+        {
+          "url": "https://onlinebooks.library.upenn.edu/webbin/metabook?id=britannica11",
+          "format": "volume scans and external text links",
+          "availability": "29-volume edition cataloged",
+          "rights_state": "PUBLIC_DOMAIN_CANDIDATE",
+          "notes": "Verify each linked volume and imprint."
+        }
+      ],
+      "acquisition_status": "NOT_DOWNLOADED",
+      "completeness_status": "SCAN_SET_IDENTIFIED_TEXT_COMPLETENESS_UNVERIFIED"
+    },
+    {
+      "id": "britannica-7-1830",
+      "title": "Encyclopaedia Britannica, 7th edition",
+      "edition": "7th",
+      "publication_years": "1830-1842",
+      "expected_volumes": 21,
+      "candidate_sources": [
+        {
+          "url": "https://tu-plogan.github.io/source/r_releases.html",
+          "format": "TXT and TEI-XML",
+          "availability": "machine-readable release v3.1 announced 2025-06-05",
+          "license": "CC-BY-4.0",
+          "rights_state": "OPEN_LICENSE_REPORTED_VERIFY_RELEASE_METADATA",
+          "notes": "Preserve attribution and exact release version."
+        }
+      ],
+      "acquisition_status": "NOT_DOWNLOADED",
+      "completeness_status": "RELEASE_REPORTED_VOLUME_COVERAGE_TO_VERIFY"
+    },
+    {
+      "id": "britannica-9-1875",
+      "title": "Encyclopaedia Britannica, 9th edition",
+      "edition": "9th",
+      "publication_years": "1875-1889",
+      "expected_volumes": 25,
+      "candidate_sources": [
+        {
+          "url": "https://tu-plogan.github.io/source/r_releases.html",
+          "format": "TXT and TEI-XML",
+          "availability": "machine-readable release v1.1 announced 2025-08-19",
+          "license": "CC-BY-4.0",
+          "rights_state": "OPEN_LICENSE_REPORTED_VERIFY_RELEASE_METADATA",
+          "notes": "Preserve attribution and exact release version."
+        }
+      ],
+      "acquisition_status": "NOT_DOWNLOADED",
+      "completeness_status": "RELEASE_REPORTED_VOLUME_COVERAGE_TO_VERIFY"
+    },
+    {
+      "id": "century-dictionary-1889",
+      "title": "The Century Dictionary and Cyclopedia",
+      "publication_years": "1889-1911",
+      "expected_parts": 24,
+      "candidate_sources": [
+        {
+          "url": "https://www.biodiversitylibrary.org/bibliography/124826",
+          "format": "volume scans, OCR, PDF, JP2",
+          "availability": "Biodiversity Heritage Library bibliography with volume-level records",
+          "rights_state": "PUBLIC_DOMAIN_REPORTED_PER_VOLUME",
+          "notes": "Inspect each part's copyright and available OCR; do not assume a single TXT bundle."
+        },
+        {
+          "url": "https://openlibrary.org/books/OL24188916M/The_Century_dictionary_and_cyclopedia",
+          "format": "catalog record and linked Internet Archive item",
+          "availability": "12-volume catalog record; includes dictionary, cyclopedia, atlas, supplements",
+          "rights_state": "PUBLIC_DOMAIN_CANDIDATE",
+          "notes": "Catalog pagination and item availability require verification."
+        }
+      ],
+      "acquisition_status": "NOT_DOWNLOADED",
+      "completeness_status": "MULTI_PART_SET_IDENTIFIED_PART_MANIFEST_NEEDED"
+    },
+    {
+      "id": "catholic-encyclopedia-1907",
+      "title": "The Catholic Encyclopedia",
+      "publication_years": "1907-1912",
+      "expected_volumes": 16,
+      "candidate_sources": [
+        {
+          "url": "https://onlinebooks.library.upenn.edu/webbin/metabook?id=cathency",
+          "format": "transcribed text and volume scans",
+          "availability": "16-volume first-edition record; later special edition and supplements are distinct",
+          "rights_state": "PUBLIC_DOMAIN_CANDIDATE_VERIFY_EDITION",
+          "notes": "Prefer the first edition; separately review later added material and host terms."
+        },
+        {
+          "url": "https://www.newadvent.org/cathen/00002a.htm",
+          "format": "HTML transcription",
+          "availability": "online transcription with site-specific copyright notice",
+          "rights_state": "UNKNOWN_HOLD_FOR_REPUBLICATION",
+          "notes": "Do not scrape/repackage New Advent HTML absent permission; locate source-edition scans or an independently licensed transcription."
+        }
+      ],
+      "acquisition_status": "NOT_DOWNLOADED",
+      "completeness_status": "SET_IDENTIFIED_EDITION_AND_HOST_RIGHTS_REVIEW_REQUIRED"
+    },
+    {
+      "id": "jewish-encyclopedia-1901",
+      "title": "The Jewish Encyclopedia",
+      "publication_years": "1901-1906",
+      "expected_volumes": 12,
+      "candidate_sources": [
+        {
+          "url": "https://openlibrary.org/books/OL6904751M/The_Jewish_encyclopedia",
+          "format": "volume catalog, PDF/plain-text options subject to item availability",
+          "availability": "edition record",
+          "rights_state": "PUBLIC_DOMAIN_CANDIDATE_VERIFY_ITEM",
+          "notes": "Check exact IA file inventory and item-level access before acquisition."
+        },
+        {
+          "url": "https://www.jewishencyclopedia.com/",
+          "format": "HTML article database",
+          "availability": "site states it contains all 12 volumes and over 15,000 articles",
+          "rights_state": "UNKNOWN_HOLD_FOR_BULK_REUSE",
+          "notes": "Site completeness claim is not a license for bulk copying; seek source scans or licensed transcription."
+        }
+      ],
+      "acquisition_status": "NOT_DOWNLOADED",
+      "completeness_status": "12_VOLUME_WORK_IDENTIFIED_DIGITAL_REUSE_RIGHTS_UNVERIFIED"
+    },
+    {
+      "id": "wikimedia-dumps",
+      "title": "Wikimedia project content dumps",
+      "edition": "dated snapshot",
+      "expected_volumes": null,
+      "candidate_sources": [
+        {
+          "url": "https://dumps.wikimedia.org/",
+          "format": "XML and other project dump formats",
+          "availability": "project-specific dated dumps",
+          "rights_state": "OPEN_LICENSE_REPORTED_VERIFY_PROJECT_AND_ATTRIBUTION",
+          "notes": "Modern collaborative corpus, not a historical encyclopedia; preserve license, attribution, and share-alike obligations."
+        }
+      ],
+      "acquisition_status": "NOT_DOWNLOADED",
+      "completeness_status": "PROJECT_AND_SNAPSHOT_SCOPE_MUST_BE_PINNED"
+    }
+  ]
+}
