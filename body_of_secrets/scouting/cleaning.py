@@ -8,10 +8,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import re
 import unicodedata
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
@@ -207,6 +206,33 @@ class EMOCRRanker:
                         if auto else "uncertain or protected token; human review required"),
             ))
         return proposals
+
+def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
+                    review_dir: str | Path | None = None,
+                    iterations: int = 12) -> list[CleanResult]:
+    """Fit one corpus-local EM profile, then clean supported text files to a new tree."""
+    source = Path(source_dir).resolve()
+    destination = Path(destination_dir).resolve()
+    if not source.is_dir() or source.is_symlink():
+        raise ValueError("source_dir must be a regular directory")
+    if destination == source or source in destination.parents:
+        raise ValueError("destination_dir must not be inside source_dir")
+    files = sorted(
+        path for path in source.rglob("*")
+        if path.is_file() and not path.is_symlink()
+        and path.suffix.lower() in {".txt", ".md", ".rst", ".text"}
+    )
+    if not files:
+        return []
+    texts = [path.read_text(encoding="utf-8", errors="strict") for path in files]
+    ranker = EMOCRRanker(iterations=iterations).fit(texts)
+    results: list[CleanResult] = []
+    for path in files:
+        relative = path.relative_to(source)
+        output = destination / relative
+        review = Path(review_dir).resolve() / (str(relative) + ".review.jsonl") if review_dir else None
+        results.append(clean_file(path, output, ranker=ranker, review_path=review))
+    return results
 
 
 def clean_file(source: str | Path, destination: str | Path, *,
