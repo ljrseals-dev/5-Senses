@@ -292,8 +292,15 @@ def clean_file(source: str | Path, destination: str | Path, *,
     raw_bytes = src.read_bytes()
     raw_text = raw_bytes.decode("utf-8", errors="strict")
     cleaned = normalize_layout(raw_text)
-    proposals = tuple(ranker.propose(cleaned)) if ranker else ()
     edits: list[dict[str, object]] = []
+    if cleaned != raw_text:
+        edits.append({
+            "kind": "layout_normalization",
+            "before_sha256": _sha256(raw_text.encode("utf-8")),
+            "after_sha256": _sha256(cleaned.encode("utf-8")),
+            "reason": "NFC, control-character removal, whitespace normalization",
+        })
+    proposals = tuple(ranker.propose(cleaned)) if ranker else ()
     # Apply only explicitly high-confidence lowercase proposals. Each accepted
     # token is recorded; REVIEW proposals remain untouched in the text.
     accepted = {p.observed: p.candidate for p in proposals if p.action == "AUTO_ACCEPT"}
@@ -309,12 +316,6 @@ def clean_file(source: str | Path, destination: str | Path, *,
             edits.append({"kind": "em_ocr_correction", "before": observed,
                           "after": candidate, "reason": "high-confidence EM proposal"})
         cleaned = corrected
-    if cleaned != raw_text:
-        edits.append({
-            "kind": "layout_normalization", "before_sha256": _sha256(raw_text.encode("utf-8")),
-            "after_sha256": _sha256(cleaned.encode("utf-8")),
-            "reason": "NFC, control-character removal, whitespace normalization",
-        })
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(cleaned, encoding="utf-8", newline="")
     if review is not None:
