@@ -229,19 +229,18 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         raise ValueError("destination_dir must not be inside source_dir")
     if destination.exists():
         raise FileExistsError(destination)
-    review_root = None
-    if review_dir is not None:
-        raw_review = Path(review_dir)
-        if raw_review.is_symlink():
-            raise ValueError("review_dir must not be a symlink")
-        review_root = raw_review.resolve()
-        if review_root == source or source in review_root.parents:
-            raise ValueError("review_dir must not be inside source_dir")
-        if (review_root == destination or review_root in destination.parents
-                or destination in review_root.parents):
-            raise ValueError("review_dir and output_dir must be separate trees")
-        if review_root.exists():
-            raise FileExistsError(review_root)
+    raw_review = (Path(review_dir) if review_dir is not None
+                  else destination.with_name(destination.name + "_review"))
+    if raw_review.is_symlink():
+        raise ValueError("review_dir must not be a symlink")
+    review_root = raw_review.resolve()
+    if review_root == source or source in review_root.parents:
+        raise ValueError("review_dir must not be inside source_dir")
+    if (review_root == destination or review_root in destination.parents
+            or destination in review_root.parents):
+        raise ValueError("review_dir and output_dir must be separate trees")
+    if review_root.exists():
+        raise FileExistsError(review_root)
     files = sorted(
         path for path in source.rglob("*")
         if path.is_file() and not path.is_symlink()
@@ -267,7 +266,7 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
     for path in files:
         relative = path.relative_to(source)
         output = destination / relative
-        review = review_root / (str(relative) + ".review.jsonl") if review_root else None
+        review = review_root / (str(relative) + ".review.jsonl")
         results.append(clean_file(
             path, output, ranker=ranker, review_path=review,
             apply_em_corrections=apply_em_corrections,
@@ -279,6 +278,7 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         "em_iterations": iterations,
         "em_corrections_applied": apply_em_corrections,
         "source_root": str(source),
+        "review_root": str(review_root),
         "files": [
             {
                 "source": item.source, "output": item.output,
