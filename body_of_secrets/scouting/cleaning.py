@@ -226,12 +226,46 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         return []
     texts = [path.read_text(encoding="utf-8", errors="strict") for path in files]
     ranker = EMOCRRanker(iterations=iterations).fit(texts)
+    # Preflight all output paths before writing any files.
+    planned_outputs = [destination / path.relative_to(source) for path in files]
+    if any(path.exists() for path in planned_outputs):
+        raise FileExistsError("one or more cleaned output files already exist")
+    if review_dir is not None:
+        review_root = Path(review_dir).resolve()
+        planned_reviews = [review_root / (str(path.relative_to(source)) + ".review.jsonl")
+                           for path in files]
+        if any(path.exists() for path in planned_reviews):
+            raise FileExistsError("one or more review files already exist")
     results: list[CleanResult] = []
     for path in files:
         relative = path.relative_to(source)
         output = destination / relative
         review = Path(review_dir).resolve() / (str(relative) + ".review.jsonl") if review_dir else None
         results.append(clean_file(path, output, ranker=ranker, review_path=review))
+    manifest_path = destination / "cleaning_manifest.json"
+    if manifest_path.exists():
+        raise FileExistsError(manifest_path)
+    manifest = {
+        "schema_version": 1,
+        "method": "corpus-local EM noisy-channel ranking plus conservative Unicode/layout normalization",
+        "model_training": "unsupervised corpus-local profile; not a pretrained model",
+        "source_root": str(source),
+        "files": [
+            {
+                "source": item.source, "output": item.output,
+                "raw_sha256": item.raw_sha256, "cleaned_sha256": item.cleaned_sha256,
+                "accepted_corrections": sum(1 for edit in item.edits
+                                            if edit.get("kind") == "em_ocr_correction"),
+                "review_proposals": sum(1 for proposal in item.proposals
+                                        if proposal.action == "REVIEW"),
+            }
+            for item in results
+        ],
+    }
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    with manifest_path.open("x", encoding="utf-8") as stream:
+        json.dump(manifest, stream, indent=2, ensure_ascii=False)
+        stream.write("\\n")
     return results
 
 
@@ -242,8 +276,11 @@ def clean_file(source: str | Path, destination: str | Path, *,
     src, dst = Path(source), Path(destination)
     if not src.is_file() or src.is_symlink():
         raise ValueError("source must be a regular, non-symlink file")
+    review = Path(review_path) if review_path is not None else None
     if dst.exists():
         raise FileExistsError(dst)
+    if review is not None and review.exists():
+        raise FileExistsError(review)
     raw_bytes = src.read_bytes()
     raw_text = raw_bytes.decode("utf-8", errors="strict")
     cleaned = normalize_layout(raw_text)
@@ -270,10 +307,7 @@ def clean_file(source: str | Path, destination: str | Path, *,
         })
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(cleaned, encoding="utf-8", newline="")
-    if review_path is not None:
-        review = Path(review_path)
-        if review.exists():
-            raise FileExistsError(review)
+    if review is not None:
         review.parent.mkdir(parents=True, exist_ok=True)
         review.write_text(
             "".join(json.dumps(asdict(p), ensure_ascii=False) + "\n" for p in proposals),
