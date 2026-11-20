@@ -61,7 +61,7 @@ def test_em_ranker_does_not_auto_rewrite_capitalized_tokens() -> None:
     ranker = EMOCRRanker().fit(
         ["modern modern modern modern modern modern modern rnodern"]
     )
-    proposals = ranker.propose("Rnodern")
+    proposals = ranker.propose("Rnodern", auto_accept=True)
     assert proposals
     assert proposals[0].action == "REVIEW"
 
