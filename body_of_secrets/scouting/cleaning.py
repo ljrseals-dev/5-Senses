@@ -175,7 +175,7 @@ class EMOCRRanker:
         seen: set[str] = set()
         for token in _TOKEN_RE.findall(text):
             observed = token.casefold()
-            if observed in seen or observed in vocabulary:
+            if observed in seen:
                 continue
             seen.add(observed)
             candidates = _token_candidates(observed, vocabulary)
@@ -223,6 +223,19 @@ def clean_file(source: str | Path, destination: str | Path, *,
     cleaned = normalize_layout(raw_text)
     proposals = tuple(ranker.propose(cleaned)) if ranker else ()
     edits: list[dict[str, object]] = []
+    # Apply only explicitly high-confidence lowercase proposals. Each accepted
+    # token is recorded; REVIEW proposals remain untouched in the text.
+    accepted = {p.observed: p.candidate for p in proposals if p.action == "AUTO_ACCEPT"}
+    if accepted:
+        def replace_token(match: re.Match[str]) -> str:
+            original = match.group(0)
+            replacement = accepted.get(original.casefold())
+            return replacement if replacement is not None else original
+        corrected = _TOKEN_RE.sub(replace_token, cleaned)
+        for observed, candidate in accepted.items():
+            edits.append({"kind": "em_ocr_correction", "before": observed,
+                          "after": candidate, "reason": "high-confidence EM proposal"})
+        cleaned = corrected
     if cleaned != raw_text:
         edits.append({
             "kind": "layout_normalization", "before_sha256": _sha256(raw_text.encode("utf-8")),
