@@ -1,8 +1,8 @@
 """Brain Engine — core language + reasoning loop.
 
-Supports two operating regimes:
-1. Classical / offline  – uses Expert rules + Archive retrieval (no external LLM)
-2. Hybrid / LLM-backed – uses an LLMProvider when one is configured
+CLASSICAL, ARCHIVE, and AUTO operate without external LLM providers.
+ARCHIVE is document-only: it never uses expert rules or an LLM.
+RESEARCH, AUDIT, and HYBRID may use an explicitly permitted provider.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from body_of_secrets import __version__, __disclaimer__
 from body_of_secrets.archive import Archive
 from body_of_secrets.expert import ExpertSystem, build_default_expert
 from .evidence import Evidence, extract_evidence
-from .modes import ModeSpec, get_mode
+from .modes import get_mode
 from .prompts import build_system, build_user_message
 from .providers import LLMProvider, default_provider
 from .truth_status import reconcile, strip_status_line
@@ -30,7 +30,7 @@ class Answer:
     sources: list[str] = field(default_factory=list)
     disclaimer: str = __disclaimer__
     version: str = __version__
-    classical: bool = False  # True when answered without an external LLM
+    classical: bool = False
 
 
 class Engine:
@@ -74,7 +74,6 @@ class Engine:
         else:
             mode_spec = get_mode(mode)
 
-        # 1. Gather classical context from Archive
         retrieved = ""
         sources: list[str] = []
         if use_archive and self.archive is not None and context is None:
@@ -85,8 +84,31 @@ class Engine:
                     if line.startswith("[") and "Source:" in line:
                         sources.append(line.split("Source:")[-1].split("|")[0].strip())
 
-        # 2. Try classical Expert rules first (fast, offline, deterministic)
-        if mode_spec.name.value in ("CLASSICAL", "ARCHIVE", "AUTO"):
+        # ARCHIVE is strict document-only. Caller-supplied context is not
+        # treated as verified archive material because it has no source record.
+        if mode_spec.name.value == "ARCHIVE":
+            if not retrieved:
+                return Answer(
+                    question=question,
+                    mode=mode_spec.name.value,
+                    answer="No relevant, provenance-bearing documents were retrieved from the Archive.",
+                    subject=subject,
+                    truth_status="UNKNOWN",
+                    sources=[],
+                    classical=True,
+                )
+            return Answer(
+                question=question,
+                mode=mode_spec.name.value,
+                answer="Retrieved Archive documents:\n\n" + retrieved,
+                subject=subject,
+                truth_status="UNKNOWN",
+                sources=sources,
+                classical=True,
+            )
+
+        # Expert rules are available in CLASSICAL, never in ARCHIVE.
+        if mode_spec.name.value == "CLASSICAL":
             rule_hit = self.expert.first_match(question)
             if rule_hit and rule_hit.matched and rule_hit.output:
                 answer_text = rule_hit.output
@@ -107,8 +129,8 @@ class Engine:
                     classical=True,
                 )
 
-        # 3. Fall back to LLM provider if available
-        provider = self.provider
+        # Do not resolve the provider property unless this mode permits it.
+        provider = self.provider if mode_spec.allows_provider else None
         if provider is None:
             if context:
                 answer_text = (
@@ -129,9 +151,9 @@ class Engine:
                 question=question,
                 mode=mode_spec.name.value,
                 answer=(
-                    "No expert rule matched and no LLM provider is configured. "
-                    "Import documents into the Archive or set OPENAI_API_KEY / "
-                    "ANTHROPIC_API_KEY to enable hybrid answers."
+                    "No expert rule matched and no LLM provider is available in this mode. "
+                    "Import documents into the Archive or select RESEARCH, AUDIT, or HYBRID "
+                    "to enable an explicitly permitted provider."
                 ),
                 subject=subject,
                 evidence=[],
@@ -140,7 +162,6 @@ class Engine:
                 classical=True,
             )
 
-        # 4. LLM path
         system = build_system(mode_spec)
         user = build_user_message(question, context=context, subject=subject)
         raw = provider.complete(system, user)
