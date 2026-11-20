@@ -124,8 +124,8 @@ class EMOCRRanker:
             if candidates:
                 observations[observed] = candidates
 
-        # Initialize a small symmetric channel. EM re-estimates latent source
-        # frequencies and per-observation correction probabilities.
+        # Initialize a directional OCR-observation channel. EM re-estimates latent
+        # source frequencies and per-observation correction probabilities.
         channel = {(obs, cand): 1.0 / len(cands)
                    for obs, cands in observations.items() for cand in cands}
         for _ in range(self.iterations):
@@ -209,6 +209,7 @@ class EMOCRRanker:
             ))
         return proposals
 
+
 def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
                     review_dir: str | Path | None = None,
                     iterations: int = 12,
@@ -223,6 +224,21 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         raise ValueError("source_dir must be a regular directory")
     if destination == source or source in destination.parents:
         raise ValueError("destination_dir must not be inside source_dir")
+    if destination.exists():
+        raise FileExistsError(destination)
+    review_root = None
+    if review_dir is not None:
+        raw_review = Path(review_dir)
+        if raw_review.is_symlink():
+            raise ValueError("review_dir must not be a symlink")
+        review_root = raw_review.resolve()
+        if review_root == source or source in review_root.parents:
+            raise ValueError("review_dir must not be inside source_dir")
+        if (review_root == destination or review_root in destination.parents
+                or destination in review_root.parents):
+            raise ValueError("review_dir and output_dir must be separate trees")
+        if review_root.exists():
+            raise FileExistsError(review_root)
     files = sorted(
         path for path in source.rglob("*")
         if path.is_file() and not path.is_symlink()
@@ -243,17 +259,12 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
     manifest_path = destination / "cleaning_manifest.json"
     if manifest_path.exists() or manifest_path in planned_outputs:
         raise FileExistsError(manifest_path)
-    if review_dir is not None:
-        review_root = Path(review_dir).resolve()
-        planned_reviews = [review_root / (str(path.relative_to(source)) + ".review.jsonl")
-                           for path in files]
-        if any(path.exists() for path in planned_reviews):
-            raise FileExistsError("one or more review files already exist")
+
     results: list[CleanResult] = []
     for path in files:
         relative = path.relative_to(source)
         output = destination / relative
-        review = Path(review_dir).resolve() / (str(relative) + ".review.jsonl") if review_dir else None
+        review = review_root / (str(relative) + ".review.jsonl") if review_root else None
         results.append(clean_file(path, output, ranker=ranker, review_path=review))
     manifest = {
         "schema_version": 1,
