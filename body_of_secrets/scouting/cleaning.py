@@ -17,10 +17,9 @@ from typing import Iterable
 
 _TOKEN_RE = re.compile(r"[^\W_]+(?:['’][^\W_]+)?", re.UNICODE)
 _CONFUSIONS = (
-    ("rn", "m"), ("m", "rn"), ("cl", "d"), ("d", "cl"),
-    ("vv", "w"), ("w", "vv"), ("0", "o"), ("o", "0"),
-    ("1", "l"), ("l", "1"), ("5", "s"), ("s", "5"),
-    ("8", "B"), ("B", "8"), ("ﬁ", "fi"), ("ﬂ", "fl"),
+    # Direction is OCR-observation -> likely printed form; do not reverse it.
+    ("rn", "m"), ("cl", "d"), ("vv", "w"), ("0", "o"),
+    ("1", "l"), ("5", "s"), ("8", "b"), ("ﬁ", "fi"), ("ﬂ", "fl"),
 )
 _SPACE_RE = re.compile(r"[ \t\f\v]+")
 
