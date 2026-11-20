@@ -20,6 +20,7 @@ class ModeSpec:
     name: Mode
     blurb: str
     system_addendum: str
+    allows_provider: bool = False
 
 
 MODES: dict[Mode, ModeSpec] = {
@@ -42,6 +43,7 @@ MODES: dict[Mode, ModeSpec] = {
             "Distinguish documented fact, hypothesis, and open question. "
             "Cite fields or primary sources where possible."
         ),
+        allows_provider=True,
     ),
     Mode.ARCHIVE: ModeSpec(
         name=Mode.ARCHIVE,
@@ -61,6 +63,7 @@ MODES: dict[Mode, ModeSpec] = {
             "Identify weaknesses, unstated assumptions, and overclaims. "
             "Be direct but constructive. Prefer conservative truth-status tags."
         ),
+        allows_provider=True,
     ),
     Mode.HYBRID: ModeSpec(
         name=Mode.HYBRID,
@@ -70,6 +73,7 @@ MODES: dict[Mode, ModeSpec] = {
             "from classical components (rules, associative memory, statistics) "
             "from any modern model contribution. Maintain full provenance."
         ),
+        allows_provider=True,
     ),
 }
 
