@@ -80,6 +80,7 @@ def test_clean_directory_mirrors_tree_and_leaves_raw_untouched(tmp_path: Path) -
     assert "rnodern" not in (output / "vol1" / "page.txt").read_text()
     assert (output / "vol1" / "page.txt").exists()
     assert (output / "cleaning_manifest.json").exists()
+    assert (tmp_path / "cleaned_review" / "vol1" / "page.txt.review.jsonl").exists()
 
 
 def test_clean_directory_rejects_oversized_input_before_writing(tmp_path: Path) -> None:
