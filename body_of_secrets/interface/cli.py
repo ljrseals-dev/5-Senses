@@ -85,6 +85,7 @@ def _cmd_clean(args: argparse.Namespace) -> int:
         args.output_dir,
         review_dir=args.review_dir,
         iterations=args.iterations,
+        max_file_bytes=args.max_file_bytes,
     )
     accepted = sum(
         1 for result in results for edit in result.edits
@@ -208,6 +209,8 @@ def main(argv: list[str] | None = None) -> int:
     p_clean.add_argument("output_dir", help="New cleaned output directory")
     p_clean.add_argument("--review-dir", default=None, help="Optional JSONL review queue directory")
     p_clean.add_argument("--iterations", type=int, default=12, help="Corpus-local EM iterations")
+    p_clean.add_argument("--max-file-bytes", type=int, default=25 * 1024 * 1024,
+                         help="Reject larger individual files before processing")
     p_clean.set_defaults(func=_cmd_clean)
 
     p_search = sub.add_parser("search", help="BM25 search over the Archive")
