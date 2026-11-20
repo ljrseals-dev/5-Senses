@@ -18,10 +18,12 @@ to train a pretrained neural model.
    the observed corpus vocabulary using a small, directional OCR-confusion seed
    list (observed OCR form -> candidate printed form). The latent word distribution and confusion probabilities are iteratively
    re-estimated. Candidate words must already occur in the corpus.
-5. **Conservative correction gate** — only lowercase tokens may be automatically
-   changed, and only when posterior probability is at least 0.995 and the
-   margin over the runner-up is at least 0.20. Capitalized tokens are review-only.
-   Unknown names, dates, numerals, quotations, and historical spellings are not
+5. **Conservative correction gate** — EM proposals are **review-only by default**.
+   To apply the opt-in correction gate, the caller must explicitly enable
+   `apply_em_corrections` / `--apply-em-corrections`. Even then, only lowercase
+   tokens with posterior probability at least 0.995 and margin over the runner-up
+   at least 0.20 can be changed. Capitalized tokens remain review-only. Unknown
+   names, dates, numerals, quotations, and historical spellings are not
    normalized by a modern dictionary.
 6. **Review queue** — uncertain proposals are written to JSONL with observed
    token, candidate, posterior, margin, action, and reason. Review proposals do
@@ -47,6 +49,9 @@ CLI equivalent:
 ```bash
 body-of-secrets clean data/incoming/britannica data/processed/britannica \\
   --review-dir data/review/britannica --iterations 12
+# Optional, higher-risk step after inspecting the review policy:
+body-of-secrets clean data/incoming/britannica data/processed/britannica-em \\
+  --review-dir data/review/britannica-em --apply-em-corrections
 ```
 
 The default per-file limit is 25 MiB and can be raised with
