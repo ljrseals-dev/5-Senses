@@ -1,1 +1,1 @@
-"""Knowledge acquisition and integration helpers."""
+"""Boy Scout acquisition, verification, and knowledge integration helpers."""
