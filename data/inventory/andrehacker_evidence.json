@@ -107,9 +107,25 @@
       "root_license_files": [],
       "default_branch": "master",
       "pushed_at": "2014-02-23T18:52:16Z"
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "role": "FAOSTAT_food_statistics_visualization_and_ETL",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "tree_entry_count": 61,
+      "file_count": 47,
+      "tree_truncated": false,
+      "fork": false,
+      "parent_repository": null,
+      "source_repository": null,
+      "repository_license_spdx": null,
+      "root_license_files": [],
+      "default_branch": "master",
+      "pushed_at": "2022-09-03T19:37:54Z"
     }
   ],
-  "artifact_count": 2048,
+  "artifact_count": 2065,
   "artifacts": [
     {
       "repository": "andrehacker/Public-Knowledgebase",
@@ -22670,6 +22686,195 @@
       "kind": "personal_project_provenance",
       "rights_status": "UNKNOWN_HOLD",
       "rights_note": "Personal website source; metadata/provenance only."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/mysql/import-faostat.sql",
+      "blob_sha": "629c35b81b4ab280ab3ecd72e97f0140073c7ad1",
+      "size_bytes": 1052,
+      "kind": "ETL_or_source_notes",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/mysql/transform-faostat.sql",
+      "blob_sha": "88c0abe6693b38fa359321a0318182f390832553",
+      "size_bytes": 2583,
+      "kind": "ETL_or_source_notes",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/countries.csv",
+      "blob_sha": "214efbf9e4f1bddd085a73b63425d5ff38771acb",
+      "size_bytes": 14606,
+      "kind": "FAOSTAT_reference_metadata_csv",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/faostat-ddl.sql",
+      "blob_sha": "a3475d718c5ed4e4b25f775eddfd0c45cf8de68f",
+      "size_bytes": 3139,
+      "kind": "ETL_or_source_notes",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/faostat-definitions-abbreviations.csv",
+      "blob_sha": "3f3b87382977b528fd95731bdb9bc786a03b8089",
+      "size_bytes": 5149,
+      "kind": "FAOSTAT_reference_metadata_csv",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/faostat-definitions-countries.csv",
+      "blob_sha": "d99ae4acd1b5922227f38ab237c166f7b95ed31c",
+      "size_bytes": 16769,
+      "kind": "FAOSTAT_reference_metadata_csv",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/faostat-definitions-country-groups.csv",
+      "blob_sha": "bef413878194a88a156461274e9db910e7ef2710",
+      "size_bytes": 130496,
+      "kind": "FAOSTAT_reference_metadata_csv",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/faostat-definitions-flags.csv",
+      "blob_sha": "7a4e1b77c397666147d852779af65a507be6ef98",
+      "size_bytes": 1642,
+      "kind": "FAOSTAT_reference_metadata_csv",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/faostat-definitions-items.csv",
+      "blob_sha": "d69ab1abb3879b01c94b8be5b2186f834bb1b657",
+      "size_bytes": 1068541,
+      "kind": "FAOSTAT_reference_metadata_csv",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/faostat-definitions-units.csv",
+      "blob_sha": "6965afd76c9068ac2e128c1e709f60af1b094365",
+      "size_bytes": 2166,
+      "kind": "FAOSTAT_reference_metadata_csv",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/faostat-views.sql",
+      "blob_sha": "0771e8f6648710157b1e281cb89f5ea53ac03342",
+      "size_bytes": 1106,
+      "kind": "ETL_or_source_notes",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "etl/postgresql/transform-faostat.sql",
+      "blob_sha": "13a25feb7529d0f14159503e1f149d707f282cee",
+      "size_bytes": 4790,
+      "kind": "ETL_or_source_notes",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "notes/notes_fao.md",
+      "blob_sha": "fa7ae532b48d6813fede8891cd60de1989855bf6",
+      "size_bytes": 3484,
+      "kind": "ETL_or_source_notes",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "notes/notes_mongo.md",
+      "blob_sha": "ab2d4806ce42034df6ac7f1c2c9f2461095e7c25",
+      "size_bytes": 2521,
+      "kind": "ETL_or_source_notes",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "notes/notes_todo.md",
+      "blob_sha": "4aa690b008edb5fe2ad0dfe2e1052e610b7a7dac",
+      "size_bytes": 1139,
+      "kind": "ETL_or_source_notes",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/foodbrowser",
+      "branch": "master",
+      "tree_sha": "4d34c867510c24250faf80577655d9eb21e516c8",
+      "path": "notes/queries.sql",
+      "blob_sha": "bc61d16f33578e71e127ac275dfe9e1f80d63217",
+      "size_bytes": 1226,
+      "kind": "ETL_or_source_notes",
+      "rights_status": "UNKNOWN_HOLD",
+      "rights_note": "Repository has no declared root license in inspected metadata. FAOSTAT source data and schema metadata have separate terms; verify the upstream dataset/version and reuse conditions."
+    },
+    {
+      "repository": "andrehacker/mapred",
+      "branch": "master",
+      "tree_sha": "0fdb993880ec8d0def6af46df5487408f94a9fbc",
+      "path": "test-hadoop/input-big/encyclopaedia-britannica.txt",
+      "blob_sha": "eeaedce9f1b3d784f23d383786714daf68974931",
+      "size_bytes": 1945886,
+      "kind": "duplicate_reference_text_used_as_hadoop_input",
+      "rights_status": "PUBLIC_DOMAIN_VERIFIED",
+      "rights_scope": "USA",
+      "rights_evidence_url": "https://www.gutenberg.org/ebooks/19699",
+      "rights_note": "Same Git blob as testdata/books/encyclopaedia-britannica.txt and the 5-Senses sample; exact Project Gutenberg 11th-edition Volume 4 Part 3."
     }
   ],
   "external_evidence": [
@@ -22715,6 +22920,24 @@
       "source_repository": "andrehacker/fu-pattern-rec",
       "source_path": "u05-selection/doku-5.tex",
       "status": "CITED_BY_SURNAME_AND_YEAR_ONLY"
+    },
+    {
+      "type": "external_data_source",
+      "title": "FAOSTAT statistical data and metadata",
+      "url": "https://www.fao.org/faostat/en/#data",
+      "source_repository": "andrehacker/foodbrowser",
+      "source_paths": [
+        "etl/postgresql/countries.csv",
+        "etl/postgresql/faostat-definitions-abbreviations.csv",
+        "etl/postgresql/faostat-definitions-countries.csv",
+        "etl/postgresql/faostat-definitions-country-groups.csv",
+        "etl/postgresql/faostat-definitions-flags.csv",
+        "etl/postgresql/faostat-definitions-items.csv",
+        "etl/postgresql/faostat-definitions-units.csv"
+      ],
+      "description": "Food Browser says its statistics are extracted from FAOSTAT; repository contains definition/reference CSVs and ETL SQL, not necessarily the full FAOSTAT statistical time-series corpus.",
+      "status": "DATA_SOURCE_REFERENCED_LOCAL_METADATA_PRESENT",
+      "rights_status": "UNKNOWN_HOLD"
     }
   ],
   "research_notes": [
