@@ -47,6 +47,14 @@ def test_em_ranker_proposes_only_observed_vocabulary_candidates() -> None:
     assert proposals[0].action == "AUTO_ACCEPT"
 
 
+def test_em_ranker_does_not_rewrite_more_common_valid_word() -> None:
+    ranker = EMOCRRanker().fit(
+        ["modern modern modern modern modern modern modern rnodern"]
+    )
+    proposals = ranker.propose("modern")
+    assert proposals == []
+
+
 def test_em_ranker_does_not_auto_rewrite_capitalized_tokens() -> None:
     ranker = EMOCRRanker().fit(
         ["modern modern modern modern modern modern modern rnodern"]
@@ -69,3 +77,4 @@ def test_clean_directory_mirrors_tree_and_leaves_raw_untouched(tmp_path: Path) -
     assert raw.exists()
     assert "rnodern" not in (output / "vol1" / "page.txt").read_text()
     assert (output / "vol1" / "page.txt").exists()
+    assert (output / "cleaning_manifest.json").exists()
