@@ -177,7 +177,10 @@ class EMOCRRanker:
             if observed in seen:
                 continue
             seen.add(observed)
-            candidates = _token_candidates(observed, vocabulary)
+            candidates = {
+                candidate for candidate in _token_candidates(observed, vocabulary)
+                if self.priors.get(candidate, 0.0) >= 3.0 * self.priors.get(observed, 0.0)
+            }
             if not candidates:
                 continue
             # Do not auto-correct capitalized tokens: likely names, headings,
