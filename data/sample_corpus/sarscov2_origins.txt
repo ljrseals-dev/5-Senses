@@ -1,0 +1,17 @@
+SARS-CoV-2 / COVID-19 — Scientific Consensus on Origins
+
+SARS-CoV-2 is a sarbecovirus (beta-coronavirus) most closely related to viruses found in horseshoe bats (Rhinolophus spp.).
+
+Leading hypothesis: natural zoonotic spillover in late 2019, most likely associated with the Huanan Seafood Wholesale Market in Wuhan, China. Live wild mammals susceptible to coronaviruses (including raccoon dogs) were sold at the market. Early human cases and environmental samples cluster there; two early viral lineages are consistent with more than one spillover event.
+
+Closest known bat viruses share up to ~96 % nucleotide identity, indicating a substantial evolutionary gap; an intermediate host is therefore considered probable, although none has been definitively identified.
+
+Laboratory-associated incident hypotheses have been examined. As of the major scientific assessments available through 2025, the bulk of genomic, epidemiological, and market evidence favors natural zoonosis. No intermediate host has been confirmed, and important early data gaps remain. Intelligence assessments have varied in confidence levels; peer-reviewed virological literature continues to regard natural spillover as the more parsimonious explanation.
+
+There is no evidence that SARS-CoV-2 was a deliberate biological weapon.
+
+Key references:
+- WHO SAGO independent assessments.
+- Holmes et al., critical reviews in Cell and related journals.
+- Market-linked epidemiological and genomic studies (Pekar, Worobey, and others).
+- Britannica and major review summaries of the zoonotic evidence.

@@ -1,0 +1,23 @@
+HIV / AIDS — Scientific Consensus on Origins
+
+Human immunodeficiency virus (HIV) is a zoonosis.
+
+HIV-1 (pandemic strain, group M) originated from simian immunodeficiency virus SIVcpz circulating in central chimpanzees (Pan troglodytes troglodytes) in west-central Africa, most likely southeastern Cameroon.
+
+Most probable route of cross-species transmission: bushmeat hunting and butchering — exposure of humans to chimpanzee blood.
+
+Timing: molecular-clock analyses place the cross-species jump that founded the pandemic lineage roughly between 1890 and 1920. The virus then spread along colonial trade and transport routes, with Kinshasa (then Léopoldville) in the Democratic Republic of Congo becoming an early epicenter.
+
+Earliest direct evidence: HIV sequences recovered from archived tissue and blood samples from Kinshasa dated 1959–1960 already show diversity consistent with decades of prior circulation.
+
+HIV-2 originated independently from SIVsmm in sooty mangabeys.
+
+Multiple independent cross-species transmissions occurred; only a few lineages established sustained human-to-human transmission.
+
+There is no credible scientific evidence that HIV was artificially created, engineered, or deliberately released. Claims linking HIV to polio-vaccine campaigns or laboratory manipulation have been examined in the peer-reviewed literature and rejected.
+
+Key references:
+- Keele et al., chimpanzee reservoir studies.
+- Worobey et al., early Kinshasa sequences and phylogeography.
+- Sharp & Hahn, reviews of SIV-to-HIV evolution.
+- Consensus summaries from AVERT, aidsmap, and major virology reviews.

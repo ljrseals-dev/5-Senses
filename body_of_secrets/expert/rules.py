@@ -97,7 +97,7 @@ class ExpertSystem:
 
 
 def build_default_expert() -> ExpertSystem:
-    """A small default rule set useful for classical AI / research questions."""
+    """Default rule set: classical AI facts + verified disease-origin consensus."""
     es = ExpertSystem()
 
     def hopfield_info(m: re.Match[str], text: str) -> str:
@@ -135,6 +135,31 @@ def build_default_expert() -> ExpertSystem:
             "This is a classical certainty-factor discipline. [OFFICIAL]"
         )
 
+    def west_nile_info(m: re.Match[str], text: str) -> str:
+        return (
+            "West Nile virus was first isolated in 1937 in the West Nile district of Uganda "
+            "from a febrile patient during yellow-fever surveillance. It is a bird–mosquito "
+            "(Culex) flavivirus. No documented human outbreaks exist from the early 1900s; "
+            "the virus was unknown to science before 1937. It reached North America in 1999. "
+            "[CONSENSUS]"
+        )
+
+    def hiv_info(m: re.Match[str], text: str) -> str:
+        return (
+            "HIV-1 (pandemic group M) originated from SIVcpz in central chimpanzees via "
+            "bushmeat exposure, most likely 1890–1920 in west-central Africa, with early "
+            "spread centered on Kinshasa. HIV-2 came from sooty mangabeys. There is no "
+            "credible evidence it was engineered or deliberately released. [CONSENSUS]"
+        )
+
+    def covid_info(m: re.Match[str], text: str) -> str:
+        return (
+            "SARS-CoV-2 is most closely related to horseshoe-bat sarbecoviruses. The leading "
+            "scientific hypothesis is natural zoonotic spillover in late 2019, associated with "
+            "the Huanan market in Wuhan. Laboratory-incident hypotheses remain discussed but "
+            "are not the majority view in the peer-reviewed virological literature. [CONSENSUS]"
+        )
+
     es.add_rule("hopfield", r"\bhopfield\b", hopfield_info, priority=10,
                 description="Hopfield network facts")
     es.add_rule("kohonen", r"\b(kohonen|self[- ]organising map|self[- ]organizing map|SOM)\b",
@@ -145,5 +170,13 @@ def build_default_expert() -> ExpertSystem:
                 description="n-gram language model facts")
     es.add_rule("provenance", r"\b(provenance|truth[- ]status|epistemic|certainty factor)\b",
                 provenance_info, priority=5, description="Provenance discipline")
+
+    # Disease-origin consensus rules (higher priority for specific queries)
+    es.add_rule("west_nile", r"\b(west nile|west-nile|WNV)\b", west_nile_info, priority=12,
+                description="West Nile virus origin facts")
+    es.add_rule("hiv_aids", r"\b(HIV|AIDS|acquired immunodeficiency)\b", hiv_info, priority=12,
+                description="HIV/AIDS origin consensus")
+    es.add_rule("covid", r"\b(COVID|COVID-19|SARS-CoV-2|SARSCoV2|coronavirus pandemic)\b",
+                covid_info, priority=12, description="SARS-CoV-2 origin consensus")
 
     return es

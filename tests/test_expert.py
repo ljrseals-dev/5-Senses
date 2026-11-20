@@ -24,3 +24,25 @@ def test_pdp_rule():
     assert result is not None
     assert result.matched
     assert "Rumelhart" in result.output or "1986" in result.output
+
+
+def test_west_nile_rule():
+    es = build_default_expert()
+    result = es.first_match("Who discovered West Nile virus?")
+    assert result is not None and result.matched
+    assert "1937" in result.output
+    assert "Uganda" in result.output
+
+
+def test_hiv_rule():
+    es = build_default_expert()
+    result = es.first_match("origin of HIV and AIDS")
+    assert result is not None and result.matched
+    assert "chimpanzee" in result.output.lower() or "SIVcpz" in result.output
+
+
+def test_covid_rule():
+    es = build_default_expert()
+    result = es.first_match("where did COVID-19 come from")
+    assert result is not None and result.matched
+    assert "zoonotic" in result.output.lower() or "bat" in result.output.lower()

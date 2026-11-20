@@ -1,0 +1,22 @@
+West Nile Virus — Origins and Early History
+
+West Nile virus (WNV) is a mosquito-borne flavivirus.
+
+First isolation: 1937, West Nile district of Uganda, from the blood of a febrile woman during yellow-fever surveillance (Smithburn et al.).
+
+Natural cycle: Birds (especially passerines) serve as amplifying hosts; Culex mosquitoes are the primary vectors. Humans and horses are incidental (dead-end) hosts.
+
+Pre-1999 distribution: Africa, Middle East, parts of Europe and Asia. Mostly mild febrile illness; occasional neurological disease.
+
+Notable early outbreaks:
+- Israel, early 1950s (first well-documented epidemic).
+- Romania 1996 and other European events in the mid-1990s marked a shift toward more severe neuroinvasive disease.
+
+Introduction to the Western Hemisphere: 1999, New York City area. The North American strain is closely related to a 1998 Israeli isolate. The exact mechanism of trans-Atlantic introduction remains unknown (most plausible routes involve infected birds or mosquitoes transported by ship or aircraft).
+
+There are no documented human outbreaks or isolations of West Nile virus in the early 1900s. Molecular-clock estimates place some lineage divergences earlier, but the virus was unknown to science before 1937.
+
+Key references (public scientific literature):
+- Smithburn et al., isolation 1937/1940.
+- Roehrig, “West Nile Virus in the United States — A Historical Perspective” (Viruses, 2013).
+- Hayes, historical reviews of Old-World ecology.
