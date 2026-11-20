@@ -73,6 +73,12 @@ The MAT files are legacy numerical artifacts and factor matrices. They are not a
 
 The reports are coursework/technical reports by André Hacker and Dimitri Schachmann, not verified peer-reviewed papers. Their source code, report PDFs, data, and visualizations are valuable primary evidence, but their repository has no root license declaration. Keep reuse on `UNKNOWN_HOLD` until the applicable code, dataset, and report rights are checked separately.
 
+Two subdirectories do contain local third-party code license notices:
+- `u05-selection/license.txt`: Florian Knorn, copyright 2005–2012; source/binary redistribution is permitted subject to retaining the notice, conditions, and disclaimer.
+- `u10-nmf/license.txt`: Adi Navve, copyright 2011; similar notice-retention and disclaimer conditions apply.
+
+These are scoped notices, not a repository-wide license. Their exact covered source files must be matched before reuse; they do not automatically license the coursework reports, datasets, visualizations, or other folders.
+
 ### 3. Parallel logistic regression and RCV1: `andrehacker/logreg`
 
 This repository contains 62 Java source files in the indexed set, nine small experiment fixtures, and a README. The README describes:
