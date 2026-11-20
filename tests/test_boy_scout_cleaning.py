@@ -78,3 +78,14 @@ def test_clean_directory_mirrors_tree_and_leaves_raw_untouched(tmp_path: Path) -
     assert "rnodern" not in (output / "vol1" / "page.txt").read_text()
     assert (output / "vol1" / "page.txt").exists()
     assert (output / "cleaning_manifest.json").exists()
+
+
+def test_clean_directory_rejects_oversized_input_before_writing(tmp_path: Path) -> None:
+    source = tmp_path / "incoming"
+    source.mkdir()
+    (source / "large.txt").write_text("123456")
+    output = tmp_path / "cleaned"
+
+    with pytest.raises(ValueError, match="max_file_bytes"):
+        clean_directory(source, output, max_file_bytes=3)
+    assert not output.exists()
