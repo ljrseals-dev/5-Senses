@@ -101,3 +101,18 @@ Every entry currently says `NOT_DOWNLOADED`. This is an intentional, accurate st
 the catalog is a verified research lead list, not a record of acquired files. Update
 the acquisition state only after recording the actual downloaded file list, byte sizes,
 SHA-256 hashes, edition/volume identifiers, retrieval date, and applicable license evidence.
+
+
+## Cleaning and quality control
+
+Incoming OCR/text files are cleaned through the separate, evidence-preserving
+pipeline documented in `docs/BOY_SCOUT_CLEANING.md`. It preserves raw source
+files, normalizes only layout/Unicode deterministically, fits a corpus-local
+unsupervised EM noisy-channel profile, and applies only very high-confidence
+lowercase corrections. Ambiguous proposals go to JSONL review; the run writes
+raw/cleaned SHA-256 values and correction counts to a manifest.
+
+The EM profile is not a pretrained model and is not proof of transcription
+accuracy. Train it separately for coherent edition/volume/OCR batches and
+evaluate against manually checked pages held out by volume. Never promote a
+corpus to training-ready solely because the cleanup command completed.
