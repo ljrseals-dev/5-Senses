@@ -1,1 +1,1 @@
-"""Integrity and acquisition safety tools for Boy Scout assets."""
+"""Boy Scout acquisition, verification, and knowledge integration helpers."""
