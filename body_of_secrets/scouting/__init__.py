@@ -1,1 +1,1 @@
-"""Discovery and acquisition helpers for external knowledge assets."""
+"""Boy Scout acquisition, verification, and knowledge integration helpers."""
