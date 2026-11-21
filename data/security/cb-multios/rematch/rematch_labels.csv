@@ -1,0 +1,7 @@
+challenge_id,title,upstream_cwe_ids,mitre_canonical_titles,upstream_historical_cves,cve_status,training_status
+REMATCH_1,Hat Trick / Morris Worm,"CWE-120;CWE-798;CWE-215","CWE-120 Buffer Copy without Checking Size of Input;CWE-798 Use of Hard-coded Credentials;CWE-215 Insertion of Sensitive Information Into Debugging Code",CVE-1999-0095,no_cve_assigned_to_synthetic_challenge,quarantined_not_training_ready
+REMATCH_2,Mail Server / Crackaddr,CWE-120,CWE-120 Buffer Copy without Checking Size of Input,CVE-2002-1337,no_cve_assigned_to_synthetic_challenge,quarantined_not_training_ready
+REMATCH_3,Address Resolution Service / SQL Slammer,CWE-121,CWE-121 Stack-based Buffer Overflow,CVE-2002-0649,no_cve_assigned_to_synthetic_challenge,quarantined_not_training_ready
+REMATCH_4,CGC RPC Server / MS08-067,CWE-135,CWE-135 Incorrect Calculation of Multi-Byte String Length,CVE-2008-4250,no_cve_assigned_to_synthetic_challenge,quarantined_not_training_ready
+REMATCH_5,File Explorer / LNK Bug,CWE-193,CWE-193 Off-by-one Error,"CVE-2010-2568;CVE-2015-0096",no_cve_assigned_to_synthetic_challenge,quarantined_not_training_ready
+REMATCH_6,Secure Server / Heartbleed,CWE-788,CWE-788 Access of Memory Location After End of Buffer,CVE-2014-0160,no_cve_assigned_to_synthetic_challenge,quarantined_not_training_ready

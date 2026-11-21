@@ -1,0 +1,36 @@
+name: Security corpus tests
+
+on:
+  pull_request:
+    paths:
+      - "body_of_secrets/**"
+      - "data/security/cb-multios/rematch/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/security-corpus.yml"
+  push:
+    branches:
+      - "security/**"
+    paths:
+      - "body_of_secrets/**"
+      - "data/security/cb-multios/rematch/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/security-corpus.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install project and test dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Run test suite
+        run: python -m pytest -q
