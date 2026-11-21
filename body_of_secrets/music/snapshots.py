@@ -1,11 +1,12 @@
 """Atomic, hash-verified snapshots and rollback."""
 # ruff: noqa: E401, E701, E702, E704
 from __future__ import annotations
-import hashlib,json,os,shutil,tempfile
+import hashlib,json,os,shutil,tempfile,threading
 from datetime import datetime,timezone
 from pathlib import Path
 from .hopfield import MotifMemory
 from .ngram import MusicNGramModel
+_SNAPSHOT_LOCK=threading.RLock()
 
 def sha256_file(path):
     h=hashlib.sha256()
@@ -17,6 +18,9 @@ class SnapshotStore:
     def __init__(self,root):
         self.root=Path(root); self.root.mkdir(parents=True,exist_ok=True); self.current_file=self.root/"CURRENT"
     def commit(self,model,memory,corpus_path,*,llm_samples=0):
+        with _SNAPSHOT_LOCK:
+            return self._commit(model,memory,corpus_path,llm_samples=llm_samples)
+    def _commit(self,model,memory,corpus_path,*,llm_samples=0):
         versions=sorted((p.name for p in self.root.glob("v[0-9]*")
                          if p.is_dir() and p.name[1:].isdigit()), key=lambda value:int(value[1:]))
         name=f"v{(int(versions[-1][1:])+1) if versions else 1:03d}"
@@ -45,7 +49,7 @@ class SnapshotStore:
         except Exception:
             shutil.rmtree(temp,ignore_errors=True); raise
     def verify(self,version):
-        if not version.startswith("v") or not version[1:].isdigit(): raise ValueError("invalid snapshot version")
+        if not isinstance(version,str) or not version.startswith("v") or not version[1:].isdigit(): raise ValueError("invalid snapshot version")
         directory=self.root/version
         metadata=json.loads((directory/"metadata.json").read_text(encoding="utf-8"))
         if metadata.get("schema")!=1 or metadata.get("version")!=version: raise ValueError("snapshot metadata mismatch")
@@ -57,6 +61,9 @@ class SnapshotStore:
             raise ValueError("snapshot corpus hash sidecar mismatch")
         return metadata
     def rollback(self,version,corpus_path):
+        with _SNAPSHOT_LOCK:
+            return self._rollback(version,corpus_path)
+    def _rollback(self,version,corpus_path):
         self.verify(version); target=Path(corpus_path); target.parent.mkdir(parents=True,exist_ok=True)
         temp=target.with_name(target.name+".rollback.tmp")
         shutil.copyfile(self.root/version/"corpus.txt",temp); os.replace(temp,target)
