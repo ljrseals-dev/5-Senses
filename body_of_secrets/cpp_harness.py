@@ -234,7 +234,9 @@ def run_fixture(fixture_id: str, *, compiler_name: str = "g++",
     compiler = shutil.which(compiler_name)
     if compiler is None:
         raise FileNotFoundError(f"compiler not found on PATH: {compiler_name}")
-    compiler = str(Path(compiler).resolve())
+    # Preserve the clang++/g++ driver name; resolving symlinks can turn
+    # clang++ into clang and silently switch the link driver to C mode.
+    compiler = str(Path(compiler).absolute())
 
     fixture_root, manifest = load_fixture_manifest(manifest_path)
     entries = {item["id"]: item for item in manifest["fixtures"]}
