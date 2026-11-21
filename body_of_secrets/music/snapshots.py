@@ -1,12 +1,19 @@
 """Atomic, hash-verified snapshots and rollback."""
-# ruff: noqa: E401, E701, E702, E704
 from __future__ import annotations
-import hashlib,json,os,shutil,tempfile,threading
-from datetime import datetime,timezone
+
+import hashlib
+import json
+import os
+import shutil
+import tempfile
+import threading
+from datetime import datetime, timezone
 from pathlib import Path
+
 from .hopfield import MotifMemory
 from .ngram import MusicNGramModel
-_SNAPSHOT_LOCK=threading.RLock()
+
+_SNAPSHOT_LOCK = threading.RLock()
 
 def sha256_file(path):
     h=hashlib.sha256()
