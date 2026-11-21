@@ -13,6 +13,7 @@ from threading import Lock
 from body_of_secrets import __disclaimer__, __version__
 from body_of_secrets.archive import Archive
 from body_of_secrets.expert import ExpertSystem, build_default_expert
+
 from .evidence import Evidence, extract_evidence
 from .modes import get_mode
 from .prompts import build_system, build_user_message
