@@ -15,21 +15,23 @@ class CorpusWriter:
         self._tokens_cache=None
         self._sources_cache=None
     def _existing_tokens(self):
-        if self._tokens_cache is None:
-            if not self.path.exists(): self._tokens_cache=set()
-            else: self._tokens_cache={strip_comments(x) for x in self.path.read_text(encoding="utf-8").splitlines() if strip_comments(x)}
+        # Reload under the process-wide append lock: another CorpusWriter instance
+        # may have changed the file since this instance was constructed.
+        if not self.path.exists(): self._tokens_cache=set()
+        else: self._tokens_cache={strip_comments(x) for x in self.path.read_text(encoding="utf-8").splitlines() if strip_comments(x)}
         return self._tokens_cache
     def _existing_sources(self):
-        if self._sources_cache is None:
-            self._sources_cache=set()
-            if self.manifest_path.exists():
-                for line in self.manifest_path.read_text(encoding="utf-8").splitlines():
-                    try:
-                        row=json.loads(line); self._sources_cache.add((row.get("source"),row.get("tokens")))
-                    except (json.JSONDecodeError,TypeError):
-                        continue
+        self._sources_cache=set()
+        if self.manifest_path.exists():
+            for line in self.manifest_path.read_text(encoding="utf-8").splitlines():
+                try:
+                    row=json.loads(line); self._sources_cache.add((row.get("source"),row.get("tokens")))
+                except (json.JSONDecodeError,TypeError):
+                    continue
         return self._sources_cache
     def append(self,tokens,*,source,prompt_hash=None):
+        if not isinstance(source,str) or not source:
+            raise ValueError("source must be a non-empty string")
         clean=strip_comments(tokens)
         if not clean: raise ValueError("cannot append empty sample")
         digest=hashlib.sha256(clean.encode()).hexdigest()
