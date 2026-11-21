@@ -51,7 +51,7 @@ class ToolSpec:
     name: str
     handler: ToolHandler
     description: str = ""
-    is_read_only: bool = True
+    is_read_only: bool = False
     is_concurrency_safe: bool = False
     is_destructive: bool = False
     validate_input: Callable[[JsonObject], None] | None = None
