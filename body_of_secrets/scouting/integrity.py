@@ -100,7 +100,10 @@ def write_manifest(manifest: dict, destination: str | Path) -> Path:
 
 def verify_manifest(manifest_path: str | Path, root: str | Path) -> list[dict[str, str]]:
     """Validate manifest shape and verify files without following symlinks or repairing."""
-    manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    manifest_file = Path(manifest_path)
+    if manifest_file.is_symlink():
+        raise ValueError("manifest file must not be a symlink")
+    manifest = json.loads(manifest_file.read_text(encoding="utf-8"))
     if not isinstance(manifest, dict) or manifest.get("schema_version") != 1 or manifest.get("algorithm") != "sha256":
         raise ValueError("unsupported manifest schema or digest algorithm")
     entries = manifest.get("files")
@@ -121,7 +124,8 @@ def verify_manifest(manifest_path: str | Path, root: str | Path) -> list[dict[st
         if not isinstance(name, str) or not name or "\x00" in name or "\\" in name:
             raise ValueError(f"manifest entry {index} has an invalid path")
         relative = PurePosixPath(name)
-        if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+        if (relative.is_absolute() or not relative.parts or relative.as_posix() != name
+                or any(part in {"", ".", ".."} for part in relative.parts)):
             raise ValueError(f"unsafe manifest path: {name}")
         normalized = relative.as_posix()
         if normalized in seen:
