@@ -60,19 +60,37 @@ redistribution terms are documented. Record and verify its SHA-256 before use.
 
 - [x] Structural keys/shapes: 75/75, zero mismatches.
 - [x] Checkpoint BatchNorm dtype inspection: all running statistics FP32.
-- [x] Loader preserves FP32 BatchNorm state in FP32 and mixed-precision modes.
-- [x] Same-process deterministic inference test on a fixed synthetic input.
-- [ ] FP32 source checkpoint acquired and provenance verified.
+- [ ] BatchNorm-preservation test executed (test authored; branch test suite not run).
+- [ ] Determinism test executed (test authored; branch test suite not run).
+- [x] Manual model consistency check: a local reconstruction of the branch model design strictly loaded the supplied checkpoint; both model implementations exposed the same 75 state keys and produced max-absolute-logit difference 0.0 on the same fixed (1, 187, 96) FP32 input. This is not an independent upstream reference.
+- [ ] Independent FP32 source checkpoint acquired and provenance verified.
 - [ ] Fixed-input FP32-source versus supplied-checkpoint logits comparison.
 - [ ] Maximum absolute logit difference recorded.
 - [ ] Upstream reference implementation parity test passed.
 
+The 0.0 model consistency result is based on a local reconstruction compared
+with the companion implementation shipped in the same uploaded archive, not
+an independent upstream reference and not an FP32-versus-FP16 drift measurement.
+It does not close the numerical-equivalence gate.
+
 No numerical-equivalence claim is made. The supplied artifact contains FP16
 learnable parameters, so those values cannot be reconstructed exactly from
-the optimized file. A valid drift measurement requires the corresponding
-original FP32 source checkpoint and the reference implementation. Neither was
-included in the supplied archive. The current checkpoint README's structural
-check is not a numerical reference fixture.
+the optimized file. A public FP32 candidate was identified at
+https://huggingface.co/oriyonay/musicnn-pytorch/tree/main/weights as
+MSD_musicnn.pt (3.19 MB; published SHA-256
+6db4c22908da50888d6a259d41980988d3b9cecc5f96fd725ede09166996dd00). It was
+not acquired into this environment: the file-host download endpoint failed.
+Its relationship to the supplied optimized checkpoint has not been proven.
+
+There is also a concrete source-version discrepancy to resolve before a
+reference comparison. The supplied checkpoint's structural manifest expects
+keys such as timbral_1.conv.conv.weight and temp_1.conv.conv.weight. The
+currently published public PyTorch port defines TimbralBlock/TemporalBlock
+using conv_block, producing conv_block.conv.* key paths instead. Shapes may
+still correspond, but the key-name difference means the 75/75 local structural
+check is not an independent upstream compatibility check. Preserve the exact
+mapping and reference source revision in the provenance record before any
+key remapping or numerical comparison.
 
 ## Preprocessing is a separate gate
 
@@ -95,9 +113,34 @@ implementation regression fixture, not an upstream-provided reference pair.
 Preprocessing parity remains unverified until compared against an independent
 reference output generated under the original dependency versions.
 
+## Classical subsystem adapters
+
+The ordered 50-label vocabulary is preserved exactly as published by the
+MusicNN PyTorch port. Inference returns sigmoid probabilities (not softmax),
+keeps per-patch scores, and averages probabilities across patches as the
+reference inference utility does.
+
+The adapters expose the 50 probabilities as MLP input features. MLP updates,
+Hopfield patterns, and n-gram training require an explicit human-confirmed
+tag list and a non-empty confirmation source. A registered Expert rule marks
+MusicNN outputs as [UNKNOWN]; it does not turn predicted tags into facts.
+Archive records include all 50 scores, the audio SHA-256, checkpoint SHA-256,
+resolved preprocessing configuration and its hash, tag-vocabulary hash,
+checkpoint dtype inventory, and integration commit SHA.
+
+The model loader and adapters do not download weights or call a model hub.
+The offline test blocks socket creation while loading a local checkpoint,
+preprocessing a local waveform, and running inference.
+
 ## Tag quality is separate
+
+The human-reviewed validation-set protocol is documented in
+[EARS_TAG_VALIDATION.md](EARS_TAG_VALIDATION.md). No track set is included
+yet.
 
 Numerical parity does not establish musical usefulness. No Expert rule may
 treat an MSD tag as a verified fact. A held-out, provenance-recorded track set
 with expected tag behavior and per-tag evaluation is required before making
-tag-quality claims or authoring authoritative Expert rules.
+tag-quality claims or authoring authoritative Expert rules. The provenance
+record hard-codes numerical-equivalence, preprocessing-parity, and tag-quality
+verification flags to false; those flags cannot be promoted by inference.

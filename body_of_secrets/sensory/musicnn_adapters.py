@@ -76,7 +76,16 @@ def predict_msd_tags(model: object, patches: object, *, top_k: int = 10) -> Musi
         raise ImportError("install body-of-secrets[musicnn] to run MSD inference") from exc
 
     try:
-        parameter = next(model.parameters())  # type: ignore[attr-defined]
+        parameter = next(
+            (
+                module.weight
+                for module in model.modules()  # type: ignore[attr-defined]
+                if isinstance(module, (torch.nn.Conv2d, torch.nn.Linear))
+            ),
+            None,
+        )
+        if parameter is None:
+            parameter = next(model.parameters())  # type: ignore[attr-defined]
     except (AttributeError, StopIteration) as exc:
         raise TypeError("model must be a parameterized MusicNN model") from exc
 
@@ -120,6 +129,11 @@ def musicnn_mlp_features(analysis: MusicNNAnalysis) -> list[float]:
     """Return the 50 mean probabilities as MLP input features, not target labels."""
     if len(analysis.mean_probabilities) != 50:
         raise ValueError("analysis must contain 50 mean probabilities")
+    if any(
+        not math.isfinite(value) or not 0.0 <= value <= 1.0
+        for value in analysis.mean_probabilities
+    ):
+        raise ValueError("analysis probabilities must be finite values in [0, 1]")
     return list(analysis.mean_probabilities)
 
 
@@ -206,15 +220,44 @@ def archive_musicnn_analysis(
     analysis: MusicNNAnalysis,
     audio_path: str | Path,
     *,
-    checkpoint_sha256: str,
-    preprocessing: Mapping[str, object],
+    provenance: Mapping[str, object],
 ) -> str:
-    """Archive an analysis with hashes and UNKNOWN status; never assert tag truth."""
-    if not re.fullmatch(r"[0-9a-fA-F]{64}", checkpoint_sha256):
-        raise ValueError("checkpoint_sha256 must be a 64-character hex digest")
+    """Archive an analysis with full provenance and UNKNOWN status."""
+    checkpoint_sha256 = provenance.get("checkpoint_sha256")
+    integration_commit_sha = provenance.get("integration_commit_sha")
+    if not isinstance(checkpoint_sha256, str) or not re.fullmatch(
+        r"[0-9a-fA-F]{64}", checkpoint_sha256
+    ):
+        raise ValueError("provenance must contain a 64-character checkpoint SHA-256")
+    if not isinstance(integration_commit_sha, str) or not re.fullmatch(
+        r"[0-9a-fA-F]{40,64}", integration_commit_sha
+    ):
+        raise ValueError("provenance must contain an integration commit SHA")
+    for hash_name in ("preprocessing_sha256", "tag_vocabulary_sha256"):
+        hash_value = provenance.get(hash_name)
+        if not isinstance(hash_value, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", hash_value):
+            raise ValueError(f"provenance must contain a valid {hash_name}")
+    if not isinstance(provenance.get("preprocessing"), Mapping):
+        raise ValueError("provenance must include the resolved preprocessing configuration")
+    if provenance.get("truth_status") != "UNKNOWN":
+        raise ValueError("MusicNN archive records must remain UNKNOWN")
+    for flag in (
+        "numerical_equivalence_verified",
+        "preprocessing_parity_verified",
+        "tag_quality_validated",
+    ):
+        if provenance.get(flag) is not False:
+            raise ValueError(f"unverified MusicNN gate must remain false: {flag}")
     path = Path(audio_path)
     if not path.is_file():
         raise FileNotFoundError(path)
+    if analysis.patch_count < 1 or len(analysis.mean_probabilities) != 50:
+        raise ValueError("analysis must contain at least one patch and all 50 scores")
+    if any(
+        not math.isfinite(value) or not 0.0 <= value <= 1.0
+        for value in analysis.mean_probabilities
+    ):
+        raise ValueError("analysis probabilities must be finite values in [0, 1]")
     digest = hashlib.sha256()
     with path.open("rb") as audio_file:
         for chunk in iter(lambda: audio_file.read(1024 * 1024), b""):
@@ -239,10 +282,10 @@ def archive_musicnn_analysis(
         "model": "MSD MusicNN standard",
         "audio_sha256": audio_sha256,
         "checkpoint_sha256": checkpoint_sha256.lower(),
-        "preprocessing": dict(preprocessing),
         "patch_count": analysis.patch_count,
         "truth_status": "UNKNOWN",
         "tag_quality_validated": False,
+        "musicnn_provenance": dict(provenance),
     }
     return archive.import_document(
         title=f"MSD MusicNN analysis {audio_sha256[:12]}",
@@ -250,5 +293,9 @@ def archive_musicnn_analysis(
         source=f"sha256:{audio_sha256}",
         tags=["ears", "musicnn", "model-output", "unverified"],
         metadata=metadata,
-        doc_id=f"musicnn_{audio_sha256[:16]}_{checkpoint_sha256[:8]}",
+        doc_id=(
+            f"musicnn_{audio_sha256[:12]}_{checkpoint_sha256[:8]}_"
+            f"{str(provenance.get('preprocessing_sha256', 'unknown'))[:8]}_"
+            f"{integration_commit_sha[:8]}"
+        ),
     )

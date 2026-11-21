@@ -6,11 +6,14 @@ import pytest
 torch = pytest.importorskip("torch")
 
 from body_of_secrets.archive import Archive  # noqa: E402
-from body_of_secrets.expert import ExpertSystem
-from body_of_secrets.language import NGramModel
-from body_of_secrets.neural import HopfieldNetwork, MLP
-from body_of_secrets.sensory.msd_tags import MSD_TAGS
-from body_of_secrets.sensory.musicnn_adapters import (
+from body_of_secrets.expert import ExpertSystem  # noqa: E402
+from body_of_secrets.language import NGramModel  # noqa: E402
+from body_of_secrets.neural import HopfieldNetwork, MLP  # noqa: E402
+from body_of_secrets.sensory.msd_tags import MSD_TAGS  # noqa: E402
+from body_of_secrets.sensory.musicnn_frontend import preprocessing_record  # noqa: E402
+from body_of_secrets.sensory.musicnn_msd import MusicnnMSD, load_msd_musicnn  # noqa: E402
+from body_of_secrets.sensory.musicnn_provenance import build_musicnn_provenance  # noqa: E402
+from body_of_secrets.sensory.musicnn_adapters import (  # noqa: E402
     archive_musicnn_analysis,
     confirmed_hopfield_pattern,
     musicnn_mlp_features,
@@ -45,6 +48,26 @@ def test_prediction_returns_stable_top_k_and_all_features():
     assert len(musicnn_mlp_features(result)) == 50
     assert musicnn_mlp_features(result) == [0.5] * 50
 
+
+
+def test_adapter_uses_fp16_compute_dtype_when_batch_norm_is_fp32(tmp_path):
+    state = MusicnnMSD().state_dict()
+    for name, tensor in list(state.items()):
+        if name.endswith(("running_mean", "running_var")):
+            state[name] = tensor.float()
+        elif name.endswith("num_batches_tracked"):
+            state[name] = tensor.to(torch.int64)
+        elif tensor.is_floating_point():
+            state[name] = tensor.half()
+    checkpoint = tmp_path / "half-model.pt"
+    torch.save(state, checkpoint)
+    model = load_msd_musicnn(checkpoint, half=True)
+
+    # Adapter input is float32; it must follow the FP16 conv/linear compute path,
+    # not the first (FP32) BatchNorm parameter.
+    result = predict_msd_tags(model, torch.zeros((1, 187, 96), dtype=torch.float32))
+    assert result.patch_count == 1
+    assert len(result.mean_probabilities) == 50
 
 def test_prediction_rejects_bad_shapes_and_top_k():
     with pytest.raises(ValueError, match="patches"):
@@ -102,14 +125,17 @@ def test_archive_record_contains_hashes_and_unknown_status(tmp_path):
     result = predict_msd_tags(FixedLogitModel(), torch.zeros((1, 187, 96)))
     audio = tmp_path / "fixture.wav"
     audio.write_bytes(b"local test audio bytes")
-    checkpoint_hash = "a" * 64
+    checkpoint = tmp_path / "checkpoint.pt"
+    torch.save(MusicnnMSD().state_dict(), checkpoint)
+    provenance = build_musicnn_provenance(
+        checkpoint,
+        preprocessing_record(),
+        integration_commit_sha="a" * 40,
+    )
+    checkpoint_hash = provenance["checkpoint_sha256"]
     with Archive(tmp_path / "archive.db") as archive:
         doc_id = archive_musicnn_analysis(
-            archive,
-            result,
-            audio,
-            checkpoint_sha256=checkpoint_hash,
-            preprocessing={"sample_rate": 16000, "n_mels": 96},
+            archive, result, audio, provenance=provenance
         )
         document = archive.get(doc_id)
 
@@ -117,5 +143,7 @@ def test_archive_record_contains_hashes_and_unknown_status(tmp_path):
     assert document.metadata["truth_status"] == "UNKNOWN"
     assert document.metadata["tag_quality_validated"] is False
     assert document.metadata["checkpoint_sha256"] == checkpoint_hash
+    assert document.metadata["musicnn_provenance"]["integration_commit_sha"] == "a" * 40
+    assert document.metadata["musicnn_provenance"]["numerical_equivalence_verified"] is False
     assert len(document.metadata["audio_sha256"]) == 64
     assert len(document.content.splitlines()) >= 53

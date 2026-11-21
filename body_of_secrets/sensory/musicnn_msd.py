@@ -106,7 +106,7 @@ class MusicnnMSD(nn.Module):
         self.backend = Backend()
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if x.ndim != 3 or x.shape[1] < 1 or x.shape[2] != N_MELS:
+        if x.ndim != 3 or x.shape[0] < 1 or x.shape[1] < 1 or x.shape[2] != N_MELS:
             raise ValueError("expected non-empty input shaped (batch, frames, 96)")
         if not x.is_floating_point():
             raise TypeError("log-mel input must be floating point")

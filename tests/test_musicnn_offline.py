@@ -8,10 +8,11 @@ import pytest
 
 torch = pytest.importorskip("torch")
 pytest.importorskip("librosa")
+pytest.importorskip("soundfile")
 
 from body_of_secrets.sensory.musicnn_adapters import predict_msd_tags  # noqa: E402
-from body_of_secrets.sensory.musicnn_frontend import make_patches, waveform_to_logmel
-from body_of_secrets.sensory.musicnn_msd import MusicnnMSD, load_msd_musicnn
+from body_of_secrets.sensory.musicnn_frontend import make_patches, waveform_to_logmel  # noqa: E402
+from body_of_secrets.sensory.musicnn_msd import MusicnnMSD, load_msd_musicnn  # noqa: E402
 
 
 def test_musicnn_frontend_loader_and_inference_need_no_network(tmp_path, monkeypatch):

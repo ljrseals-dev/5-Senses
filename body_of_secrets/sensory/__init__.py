@@ -1,1 +1,1 @@
-"""Sensory subsystem — Eyes (documents/images) and Ears (speech/audio) — placeholder."""
+"""Sensory subsystem: Eyes remain a placeholder; Ears provides optional local music tagging."""
