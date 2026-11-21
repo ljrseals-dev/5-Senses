@@ -19,7 +19,7 @@ def test_manifest_is_metadata_only_and_rights_held():
     assert all(source["revision_status"] == "PINNED" for source in manifest["sources"])
     assert all(source["revision"] for source in manifest["sources"])
     assert all(item["rights_status"] == "UNVERIFIED_HOLD" for item in manifest["records"])
-    assert all(item["source_path"] is None for item in manifest["records"])
+    assert all(item["source_path"] for item in manifest["records"])\n    assert all(item["source_path_status"] == "VERIFIED_AT_PINNED_REVISION" for item in manifest["records"])\n    assert all(item["source_blob_sha"] for item in manifest["records"])
 
 
 def test_manifest_rejects_embedded_source_code(tmp_path):
@@ -42,7 +42,7 @@ def test_archive_import_is_provenance_bound_and_repeatable(tmp_path):
         assert doc.metadata["source_code_included"] is False
         assert doc.metadata["rights_status"] == "UNVERIFIED_HOLD"
         assert doc.metadata["source_repo"] == "BartVandewoestyne/Cpp"
-        assert doc.metadata["source_revision"] == revisions["bart-cpp"]
+        assert doc.metadata["source_revision"] == revisions["bart-cpp"]\n        assert doc.metadata["source_path"] == "C++98/examples/pure_virtual_destructors.cpp"\n        assert doc.metadata["source_blob_sha"] == "172b422e67aba9e6bd08892590dbbbba72937f13"
 
 
 @pytest.mark.parametrize(
