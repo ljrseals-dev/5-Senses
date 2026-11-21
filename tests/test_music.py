@@ -1,6 +1,6 @@
 """Tests for symbolic music learning."""
 # ruff: noqa: E401, E701, E702, E704
-import json,struct
+import json,struct,pytest
 from body_of_secrets.language import NGramModel
 from body_of_secrets.music.corpus import CorpusWriter
 from body_of_secrets.music.encoder import encode_file
@@ -142,3 +142,27 @@ def test_uncertainty_flags_unseen_context():
     model=MusicNGramModel(3); model.train_lines(["P060 D004 P062 D004 P064 D004"])
     verdict=evaluate_uncertainty(model,MotifMemory(),"P099 D001","P060 D004")
     assert verdict.is_uncertain and verdict.reason=="unseen_context"
+
+def test_corpus_recovers_source_deduplication_after_manifest_loss(tmp_path):
+    path=tmp_path/"corpus.txt"
+    writer=CorpusWriter(path)
+    sample="P060 D004 P062 D004"
+    assert writer.append(sample,source="file:my score.mid")
+    (tmp_path/"provenance.jsonl").unlink()
+    recovered=CorpusWriter(path)
+    assert not recovered.append(sample,source="file:my score.mid")
+    assert len(path.read_text().splitlines())==1
+
+def test_motif_snapshot_rejects_mismatched_vector():
+    memory=MotifMemory()
+    memory.build(["P060 D004 P062 D004 P064 D004"]*3)
+    data=memory.to_dict()
+    data["patterns"][0]["vector"][0] *= -1
+    with pytest.raises(ValueError,match="invalid motif pattern"):
+        MotifMemory.from_dict(data)
+
+def test_ngram_rejects_non_integer_order():
+    with pytest.raises(ValueError,match="positive integer"):
+        NGramModel(n=1.5)
+    with pytest.raises(ValueError,match="positive integer"):
+        NGramModel(n=True)
