@@ -268,3 +268,32 @@ def test_duplicate_tool_call_ids_are_rejected_without_losing_order():
     results = [e for e in events if e.kind == "tool_result"]
     assert [e.data["call_id"] for e in results] == ["same", "same", "last"]
     assert [e.data["status"] for e in results] == ["OK", "REJECTED", "REJECTED"]
+
+
+
+def test_backend_stream_is_closed_after_complete_event():
+    class ClosingBackend:
+        def __init__(self):
+            self.closed = False
+        async def stream(self, messages, *, static_prompt, dynamic_prompt, tools):
+            try:
+                yield ModelEvent("complete")
+                yield ModelEvent("text", text="must not be consumed")
+            finally:
+                self.closed = True
+
+    backend = ClosingBackend()
+    events = asyncio.run(collect(AgentRuntime(backend)))
+    assert backend.closed is True
+    assert not any(e.kind == "text" for e in events)
+
+
+def test_empty_context_compaction_is_rejected():
+    backend = FakeBackend([
+        [ModelEvent("tool_call", tool_call=ToolCall("first", "missing", {}))],
+        [ModelEvent("complete")],
+    ])
+    runtime = AgentRuntime(backend, compact_after_messages=2, compactor=lambda messages: [])
+    events = asyncio.run(collect(runtime))
+    assert events[-1].data["status"] == "FAILED"
+    assert any(e.kind == "error" for e in events)
