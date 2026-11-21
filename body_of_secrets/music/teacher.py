@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
+
 class MusicTeacher(Protocol):
     def complete(self,prompt:str)->str: ...
 
@@ -49,7 +50,7 @@ class LoggedTeacher:
         def invoke():
             try:
                 value=self.teacher.complete(prompt); ok=True
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - provider plugins are an untrusted boundary
                 value=exc; ok=False
             try:
                 with state_lock:
