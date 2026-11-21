@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from body_of_secrets.cpp_harness import load_fixture_manifest, run_fixture
+from body_of_secrets.cpp_harness import load_fixture_manifest, run_fixture, sha256_file
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -23,6 +23,7 @@ def test_manifest_contains_only_allowlisted_independent_fixtures():
         source = (root / fixture["path"]).resolve()
         assert root in source.parents
         assert source.is_file()
+        assert sha256_file(source) == fixture["sha256"]
 
 
 def test_manifest_rejects_path_traversal(tmp_path):
