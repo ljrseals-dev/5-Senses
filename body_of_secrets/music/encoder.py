@@ -138,7 +138,10 @@ def _abc(path: Path) -> str:
         if length:
             if "/" in length:
                 numerator, _, denominator = length.partition("/")
-                multiplier = (float(numerator) if numerator else 1.0) / (float(denominator) if denominator else 2.0)
+                denominator_value = float(denominator) if denominator else 2.0
+                if denominator_value == 0:
+                    raise ValueError("ABC note duration denominator must be non-zero")
+                multiplier = (float(numerator) if numerator else 1.0) / denominator_value
             else:
                 multiplier = float(length)
             if not math.isfinite(multiplier) or multiplier <= 0:
