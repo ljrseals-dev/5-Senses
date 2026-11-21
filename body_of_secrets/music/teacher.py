@@ -55,7 +55,7 @@ class LoggedTeacher:
         def invoke():
             try:
                 value=self.teacher.complete(prompt); ok=True
-            except Exception as exc:  # noqa: BLE001 - provider plugins are an untrusted boundary  # noqa: BLE001 - provider plugins are an untrusted boundary
+            except Exception as exc:  # noqa: BLE001 - provider plugins are an untrusted boundary
                 value=exc; ok=False
             try:
                 with state_lock:
