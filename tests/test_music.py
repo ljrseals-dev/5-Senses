@@ -35,12 +35,14 @@ def test_midi_encoding_is_stable(tmp_path):
     assert encode_file(path)==encode_file(path)
     assert encode_file(path).startswith("P060 D004 P064 D004")
 def test_abc_encoding(tmp_path):
-    path.write_text("X:1\nL:1/4\nK:C\n[CEG]2 D |\n")
+    path=tmp_path/"scale.abc"
+    path.write_text("X:1\nT:Scale\nL:1/4\nK:C\nC D E F G A B c |\n")
     encoded=encode_file(path)
     assert encoded.startswith("P060 D004 P062 D004") and "P072" in encoded
+
 def test_abc_bracket_chord_is_grouped_polyphonically(tmp_path):
     path=tmp_path/"chord.abc"
-    path.write_text("X:1\\nL:1/4\\nK:C\\n[CEG]2 D |\\n")
+    path.write_text("X:1\nL:1/4\nK:C\n[CEG]2 D |\n")
     assert encode_file(path)=="CHD P060 D002 CHD P064 D002 CHD P067 D002 P062 D004"
 
 def test_existing_ngram_supports_exact_symbolic_tokens():
