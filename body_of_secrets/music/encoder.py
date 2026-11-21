@@ -98,7 +98,7 @@ def _midi(path: Path) -> str:
     return " ".join(tokens)
 
 _ABC_NOTE = re.compile(r"([_^=]*)([A-Ga-g])([,']*)(\d*(?:/\d*)?)")
-_ABC_EVENT = re.compile(r"\[([^\]]+)\](\d*(?:/\d*)?)|([_^=]*)([A-Ga-g])([,']*)(\d*(?:/\d*)?)")
+_ABC_EVENT = re.compile(r"\[([^\]]+)\](\d*(?:/\d*)?)|([_^=]*)([A-Ga-g])([,']*)(\d*(?:/\d*)?)|([zx])(\d*(?:/\d*)?)")
 
 def _abc(path: Path) -> str:
     text = path.read_text(encoding="utf-8-sig")
