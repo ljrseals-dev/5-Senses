@@ -555,3 +555,14 @@ def test_context_compactor_accepts_correlated_tool_call_group():
         },
     ]
     AgentRuntime._validate_compacted_messages(messages)
+
+
+
+def test_tool_call_ids_cannot_be_reused_across_turns():
+    backend = FakeBackend([
+        [ModelEvent("tool_call", tool_call=ToolCall("same", "missing", {}))],
+        [ModelEvent("tool_call", tool_call=ToolCall("same", "missing", {}))],
+    ])
+    events = asyncio.run(collect(AgentRuntime(backend, max_turns=3)))
+    assert events[-1].data["status"] == "FAILED"
+    assert any("duplicate or reused" in e.data.get("error", "") for e in events)
