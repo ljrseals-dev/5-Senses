@@ -6,6 +6,7 @@ are kept outside the source tree. Remote model code is never enabled.
 from __future__ import annotations
 
 import json
+import math
 import re
 import shutil
 import urllib.parse
@@ -48,7 +49,7 @@ def search_models(query: str, *, limit: int = 20, timeout: float = 20.0) -> list
         raise ValueError("query must not be empty")
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 100:
         raise ValueError("limit must be an integer between 1 and 100")
-    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or timeout <= 0:
+    if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be positive")
     params = urllib.parse.urlencode({"search": query, "limit": limit, "sort": "downloads", "direction": -1})
     request = urllib.request.Request(f"https://huggingface.co/api/models?{params}",
@@ -108,10 +109,10 @@ def acquire_model(repo_id: str, destination: str | Path, *, revision: str) -> Pa
         except ImportError as exc:
             raise RuntimeError("Install optional dependency: pip install huggingface_hub") from exc
 
-        snapshot_download(repo_id=repo_id, revision=revision, local_dir=str(target),
-                          repo_type="model", local_files_only=False)
+        snapshot_download(repo_id=repo_id, revision=revision.lower(), local_dir=str(target),
+                          repo_type="model", local_files_only=False, etag_timeout=20.0)
         files = sorted(path for path in target.rglob("*") if path.is_file())
-        if any(path.is_symlink() for path in files):
+        if any(path.is_symlink() for path in target.rglob("*")):
             raise ValueError("downloaded model snapshot contains symlinks; refusing manifest")
         manifest = build_manifest(files, target)
         manifest.update({"asset_kind": "pretrained_model_snapshot",
