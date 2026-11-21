@@ -1,17 +1,19 @@
 """Offline-first training and opt-in active teacher loop."""
-# ruff: noqa: E701, E702, E704
 from __future__ import annotations
-import hashlib,json,math
-from datetime import datetime,timezone
+
+import hashlib
+import json
+import math
+from datetime import datetime, timezone
 from pathlib import Path
 from .corpus import CorpusWriter
 from .encoder import encode_directory
 from .hopfield import MotifMemory
 from .ngram import MusicNGramModel
 from .snapshots import SnapshotStore
-from .teacher import LoggedTeacher,build_prompt
-from .tokens import DURATION_BEATS,validate_tokens
-from .validator import candidate_from_model,evaluate_uncertainty
+from .teacher import LoggedTeacher, build_prompt
+from .tokens import DURATION_BEATS, validate_tokens
+from .validator import candidate_from_model, evaluate_uncertainty
 
 def _record_metrics(root,*,iteration,queries,rejected,hopfield_hits,lines,model,holdout,status):
     holdout_perplexity=None
