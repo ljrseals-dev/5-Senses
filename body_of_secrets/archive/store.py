@@ -106,7 +106,8 @@ class Archive:
         doc_id: str | None = None,
     ) -> str:
         if not doc_id:
-            digest = hashlib.sha256(f"{source}:{title}:{content[:200]}".encode()).hexdigest()[:16]
+            identity = json.dumps([source, title, content], ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            digest = hashlib.sha256(identity).hexdigest()
             doc_id = f"doc_{digest}"
 
         tags = tags or []
@@ -157,7 +158,7 @@ class Archive:
 
     def import_text_file(self, path: str | Path, *, source: str | None = None) -> str:
         path = Path(path)
-        content = path.read_text(encoding="utf-8", errors="replace")
+        content = path.read_text(encoding="utf-8", errors="strict")
         return self.import_document(
             title=path.name,
             content=content,
@@ -210,6 +211,14 @@ class Archive:
     # ------------------------------------------------------------------
 
     def search(self, query: str, *, limit: int = 5, k1: float = 1.2, b: float = 0.75) -> list[SearchHit]:
+        if not isinstance(query, str):
+            raise TypeError("query must be a string")
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+            raise ValueError("limit must be a positive integer")
+        if isinstance(k1, bool) or not isinstance(k1, (int, float)) or not math.isfinite(k1) or k1 <= 0:
+            raise ValueError("k1 must be a positive finite number")
+        if isinstance(b, bool) or not isinstance(b, (int, float)) or not math.isfinite(b) or not 0 <= b <= 1:
+            raise ValueError("b must be a finite number between 0 and 1")
         query_terms = tokenize(query)
         if not query_terms:
             return []
