@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "contains_source_code": false,
+  "description": "Metadata-only registry for two external C++ reference corpora. No source files are redistributed.",
+  "sources": [
+    {
+      "id": "bart-cpp",
+      "repository": "BartVandewoestyne/Cpp",
+      "url": "https://github.com/BartVandewoestyne/Cpp",
+      "default_branch": "master",
+      "revision_status": "PINNED",
+      "license_status": "UNVERIFIED_HOLD",
+      "purpose": "Historical and cross-standard examples, experiments, exercises, and portability context.",
+      "revision": "376ae463ee95ee5723e74322b7fa25a59e972ac9"
+    },
+    {
+      "id": "effective-modern-cpp",
+      "repository": "BartVandewoestyne/Effective-Modern-Cpp",
+      "url": "https://github.com/BartVandewoestyne/Effective-Modern-Cpp",
+      "default_branch": "master",
+      "revision_status": "PINNED",
+      "license_status": "UNVERIFIED_HOLD",
+      "purpose": "Modern C++ semantics and compilable examples associated with the 42 Items of Effective Modern C++.",
+      "revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539"
+    }
+  ],
+  "records": [
+    {
+      "id": "cpp98-pure-virtual-destructor",
+      "source_id": "bart-cpp",
+      "source_path": "C++98/examples/pure_virtual_destructors.cpp",
+      "source_revision": "376ae463ee95ee5723e74322b7fa25a59e972ac9",
+      "language_standard": [
+        "c++98"
+      ],
+      "concepts": [
+        "object-lifetime",
+        "destructor",
+        "linkage"
+      ],
+      "item_number": null,
+      "rights_status": "UNVERIFIED_HOLD",
+      "summary": "Historical pattern: a pure virtual destructor still requires an out-of-class definition when destruction of derived objects must link.",
+      "hypothesis": "A missing definition may produce a linker error even though the destructor is declared pure virtual.",
+      "distinguishing_test": "Compile and link a minimal base/derived example under the intended historical language mode; inspect the exact undefined-symbol diagnostic.",
+      "source_blob_sha": "172b422e67aba9e6bd08892590dbbbba72937f13",
+      "source_path_status": "VERIFIED_AT_PINNED_REVISION"
+    },
+    {
+      "id": "cpp-emc-item18-unique-ptr",
+      "source_id": "effective-modern-cpp",
+      "source_path": "Item18_Use_std_unique_ptr_for_exclusive-ownership_resource_management/investments_cpp11.cpp",
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "unique-ptr",
+        "ownership",
+        "move-semantics"
+      ],
+      "item_number": 18,
+      "rights_status": "UNVERIFIED_HOLD",
+      "summary": "Modern ownership example candidate: unique_ptr expresses exclusive ownership and transfers ownership through moves.",
+      "hypothesis": "A move from a unique_ptr should transfer the managed resource and leave the source empty.",
+      "distinguishing_test": "Check source and destination get() values after move construction and count exactly one resource destruction.",
+      "source_blob_sha": "ab8de823d5fe68140fcb6623f39ec7c3a6d7d603",
+      "source_path_status": "VERIFIED_AT_PINNED_REVISION"
+    },
+    {
+      "id": "cpp-emc-shared-ptr",
+      "source_id": "effective-modern-cpp",
+      "source_path": "Item19_Use_std_shared_ptr_for_shared-ownership_resource_management/shared_ptr_things_to_know.cpp",
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "shared-ptr",
+        "ownership",
+        "reference-counting"
+      ],
+      "item_number": null,
+      "rights_status": "UNVERIFIED_HOLD",
+      "summary": "Shared ownership candidate: shared_ptr maintains shared lifetime through its control block.",
+      "hypothesis": "The managed object remains alive while at least one owning shared_ptr remains.",
+      "distinguishing_test": "Observe use_count and destructor timing while copying, resetting, and retaining owners.",
+      "source_blob_sha": "7bb954732eb19ae1f9886b6c5c76dda6adc98e0f",
+      "source_path_status": "VERIFIED_AT_PINNED_REVISION"
+    },
+    {
+      "id": "cpp-emc-weak-ptr",
+      "source_id": "effective-modern-cpp",
+      "source_path": "Item20_Use_std_weak_ptr_for_std_shared_ptr-like_pointers_that_can_dangle/creation.cpp",
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "weak-ptr",
+        "ownership",
+        "lifetime"
+      ],
+      "item_number": null,
+      "rights_status": "UNVERIFIED_HOLD",
+      "summary": "Non-owning observation candidate: weak_ptr does not extend the lifetime of the shared object.",
+      "hypothesis": "After the final shared owner is reset, weak_ptr::expired becomes true and lock returns an empty shared_ptr.",
+      "distinguishing_test": "Reset the final shared owner, then assert expired() and the result of lock().",
+      "source_blob_sha": "c953faeec8a7e7be4a91dc3af5000aac7cf51671",
+      "source_path_status": "VERIFIED_AT_PINNED_REVISION"
+    },
+    {
+      "id": "cpp-emc-move-semantics",
+      "source_id": "effective-modern-cpp",
+      "source_path": "Item23_Understand_std_move_and_std_forward/std_move_in_cpp11.cpp",
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "move-semantics",
+        "value-categories"
+      ],
+      "item_number": null,
+      "rights_status": "UNVERIFIED_HOLD",
+      "summary": "std::move is a cast that enables move-aware overload resolution; it does not itself move a resource.",
+      "hypothesis": "Whether a resource is moved depends on the selected overload and the type's move operations.",
+      "distinguishing_test": "Use instrumented copy and move constructors and inspect the selected overload for lvalue and xvalue inputs.",
+      "source_blob_sha": "6f57e9de5e03a5ca84cea1240efbc58251370352",
+      "source_path_status": "VERIFIED_AT_PINNED_REVISION"
+    },
+    {
+      "id": "cpp-emc-item-forwarding",
+      "source_id": "effective-modern-cpp",
+      "source_path": "Item24_Distinguish_universal_references_from_rvalue_references/urefs_form.cpp",
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "perfect-forwarding",
+        "reference-collapsing",
+        "templates"
+      ],
+      "item_number": null,
+      "rights_status": "UNVERIFIED_HOLD",
+      "summary": "Forwarding-reference candidate: T&& with deduced T and std::forward<T> preserves the caller's value category.",
+      "hypothesis": "A forwarding reference binds differently for lvalues and rvalues, with reference collapsing determining the resulting parameter type.",
+      "distinguishing_test": "Call the forwarding function with an lvalue and a temporary; assert the selected overloads and deduced types.",
+      "source_blob_sha": "d2b6b68586891f7a5b762c47315988d8d254a91c",
+      "source_path_status": "VERIFIED_AT_PINNED_REVISION"
+    },
+    {
+      "id": "cpp-emc-type-deduction",
+      "source_id": "effective-modern-cpp",
+      "source_path": "Item03_Understand_decltype/typical_cases.cpp",
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11"
+      ],
+      "concepts": [
+        "type-deduction",
+        "auto",
+        "decltype"
+      ],
+      "item_number": null,
+      "rights_status": "UNVERIFIED_HOLD",
+      "summary": "Type-deduction candidate: auto and decltype follow different deduction rules, particularly around references and value categories.",
+      "hypothesis": "A declaration's deduced type may differ from the type produced by decltype(expression).",
+      "distinguishing_test": "Use static_assert with std::is_same for lvalue, const, reference, and parenthesized-expression cases.",
+      "source_blob_sha": "49eb18ae60ff848f5248b959a603bb4a2867bf40",
+      "source_path_status": "VERIFIED_AT_PINNED_REVISION"
+    },
+    {
+      "id": "cpp-emc-concurrency",
+      "source_id": "effective-modern-cpp",
+      "source_path": "Item16_Make_const_member_functions_thread-safe/undefined_behavior.cpp",
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11"
+      ],
+      "concepts": [
+        "concurrency",
+        "data-race",
+        "synchronization"
+      ],
+      "item_number": null,
+      "rights_status": "UNVERIFIED_HOLD",
+      "summary": "Concurrency candidate: thread-safe lifetime management does not make unsynchronized access to the managed object race-free.",
+      "hypothesis": "Shared ownership alone does not protect mutable object state from data races.",
+      "distinguishing_test": "Create a deterministic concurrent access reproducer and run ThreadSanitizer; compare synchronized and unsynchronized variants.",
+      "source_blob_sha": "4b16a5340fdfe57bd1c28659dbbf5ba1ca78c862",
+      "source_path_status": "VERIFIED_AT_PINNED_REVISION"
+    }
+  ]
+}

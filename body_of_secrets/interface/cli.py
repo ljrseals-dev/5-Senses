@@ -10,6 +10,9 @@ from pathlib import Path
 from body_of_secrets import __version__
 from body_of_secrets.archive import Archive
 from body_of_secrets.brain import Engine
+from body_of_secrets.cpp_debug import analyze_cpp_file, report_json
+from body_of_secrets.cpp_corpus import import_manifest, load_manifest
+from body_of_secrets.cpp_harness import run_fixture
 from body_of_secrets.expert import build_default_expert
 from body_of_secrets.language import NGramModel
 from body_of_secrets.memory import Memory
@@ -143,6 +146,112 @@ def _cmd_neural(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def _cmd_debug_cpp(args: argparse.Namespace) -> int:
+    """Run static C++ triage; never launches a compiler or executes source."""
+    try:
+        report = analyze_cpp_file(args.source, standard=args.std, input_text=args.description or "")
+    except (OSError, UnicodeError, ValueError) as exc:
+        print(f"C++ triage failed: {exc}", file=sys.stderr)
+        return 2
+
+    archive = Archive(args.db)
+    record_json = report_json(report)
+    doc_id = archive.import_document(
+        title=f"C++ debug triage {report.record_id}",
+        content=record_json,
+        source=f"cpp-debug:{report.source_path}",
+        tags=["cpp-debug", "static-triage", args.std],
+        metadata={"record_id": report.record_id, "source_sha256": report.source_sha256,
+                  "verification": "NOT_RUN"},
+    )
+    archive.close()
+    payload = json.loads(record_json)
+    payload["archive_document_id"] = doc_id
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        print(f"Record: {report.record_id}")
+        print(f"Source SHA-256: {report.source_sha256}")
+        print(f"Observations: {len(report.observations)}")
+        for item in report.observations:
+            print(f"  {item.rule} at line {item.line}: {item.excerpt}")
+        print(f"Hypotheses: {len(report.hypotheses)}")
+        for item in report.hypotheses:
+            print(f"  {item.id} [{item.status}] {item.category}: {item.statement}")
+            for test in item.discriminating_tests:
+                print(f"    Discriminate with: {test}")
+        print("Verification: NOT RUN (static triage only; no compiler or sanitizer launched)")
+        print(f"Archived as: {doc_id}")
+    return 0
+
+
+
+def _cmd_cpp_corpus(args: argparse.Namespace) -> int:
+    """Import metadata-only C++ corpus records; never fetch or copy source code."""
+    try:
+        manifest = load_manifest(args.manifest)
+        if args.dry_run:
+            print(f"Validated {len(manifest['records'])} metadata records from {len(manifest['sources'])} repositories.")
+            print("No Archive writes performed.")
+            return 0
+        with Archive(args.db) as archive:
+            imported = import_manifest(archive, args.manifest)
+            print(f"Imported or refreshed {len(imported)} metadata-only C++ reference records.")
+            print("Source code copied: no")
+            print("Rights status: UNVERIFIED_HOLD (all records)")
+            for doc_id in imported:
+                print(f"  {doc_id}")
+        return 0
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+        print(f"C++ corpus import failed: {exc}", file=sys.stderr)
+        return 2
+
+
+
+def _cmd_verify_cpp(args: argparse.Namespace) -> int:
+    """Compile/run one allow-listed C++ fixture and archive its evidence."""
+    try:
+        result = run_fixture(
+            args.fixture,
+            compiler_name=args.compiler,
+            manifest_path=args.manifest,
+        )
+        statuses = [item["outcome"] for item in result["runs"]]
+        doc_id = (
+            "cppverify_"
+            + result["fixture_id"].replace(".", "_").replace("-", "_")
+            + "_" + args.compiler.replace("+", "p")
+            + "_" + result["source_sha256"][:12]
+        )
+        with Archive(args.db) as archive:
+            archive.import_document(
+                title=f"C++ verification {result['fixture_id']}",
+                content=json.dumps(result, indent=2, sort_keys=True),
+                source=f"cpp-fixture:{result['fixture_id']}",
+                tags=["cpp-verification", "fixture", args.compiler, *result["tags"]],
+                metadata={
+                    "fixture_id": result["fixture_id"],
+                    "source_sha256": result["source_sha256"],
+                    "verification_status": statuses,
+                    "compiler": args.compiler,
+                    "compiler_version": result["compiler_version"],
+                    "standard": result["standard"],
+                    "execution_performed": result["execution_performed"],
+                    "external_source_code_included": False,
+                },
+                doc_id=doc_id,
+            )
+        result["archive_document_id"] = doc_id
+        print(json.dumps(result, indent=2, sort_keys=True) if args.json else
+              f"{result['fixture_id']}: {'PASS' if result['passed'] else 'FAIL'} "
+              f"({', '.join(statuses)}); archived as {doc_id}")
+        return 0 if result["passed"] else 1
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+        print(f"C++ verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def _cmd_status(args: argparse.Namespace) -> int:
     archive = Archive(args.db)
     print(f"BODY OF SECRETS v{__version__}")
@@ -204,6 +313,28 @@ def main(argv: list[str] | None = None) -> int:
     p_nn = sub.add_parser("neural", help="Run classical neural demos")
     p_nn.add_argument("demo", choices=["hopfield", "mlp"])
     p_nn.set_defaults(func=_cmd_neural)
+
+
+    p_cpp = sub.add_parser("debug-cpp", help="Evidence-preserving, non-executing C++ source triage")
+    p_cpp.add_argument("--source", required=True, help="C++ source file to inspect (read-only)")
+    p_cpp.add_argument("--std", default="c++20", choices=["c++17", "c++20"])
+    p_cpp.add_argument("--description", default=None, help="Observed failure or diagnostic (not executed)")
+    p_cpp.add_argument("--json", action="store_true")
+    p_cpp.set_defaults(func=_cmd_debug_cpp)
+
+    p_corpus = sub.add_parser("cpp-corpus", help="Import metadata-only C++ reference corpus records")
+    p_corpus.add_argument("--manifest", default="data/cpp_reference_corpora.json")
+    p_corpus.add_argument("--dry-run", action="store_true", help="Validate and preview without Archive writes")
+    p_corpus.set_defaults(func=_cmd_cpp_corpus)
+
+    p_verify = sub.add_parser(
+        "verify-cpp", help="Compile and verify one allow-listed C++ fixture"
+    )
+    p_verify.add_argument("--fixture", required=True, help="Fixture ID from the checked-in manifest")
+    p_verify.add_argument("--compiler", choices=["g++", "clang++"], default="g++")
+    p_verify.add_argument("--manifest", default="tests/fixtures/cpp/manifest.json")
+    p_verify.add_argument("--json", action="store_true")
+    p_verify.set_defaults(func=_cmd_verify_cpp)
 
     p_st = sub.add_parser("status", help="Show system status")
     p_st.set_defaults(func=_cmd_status)

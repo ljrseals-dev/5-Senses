@@ -1,0 +1,136 @@
+from __future__ import annotations
+
+import json
+import os
+import shutil
+from pathlib import Path
+
+import pytest
+
+from body_of_secrets.cpp_harness import load_fixture_manifest, run_fixture, sha256_file
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+MANIFEST = REPO_ROOT / "tests" / "fixtures" / "cpp" / "manifest.json"
+COMPILER = os.environ.get("CPP_FIXTURE_COMPILER", "g++")
+
+
+def test_manifest_contains_only_allowlisted_independent_fixtures():
+    root, payload = load_fixture_manifest(MANIFEST)
+    assert payload["external_source_code_included"] is False
+    fixture_ids = [fixture["id"] for fixture in payload["fixtures"]]
+    assert len(fixture_ids) >= 10
+    assert len(fixture_ids) == len(set(fixture_ids))
+    for fixture in payload["fixtures"]:
+        source = (root / fixture["path"]).resolve()
+        assert root in source.parents
+        assert source.is_file()
+        assert sha256_file(source) == fixture["sha256"]
+
+
+def test_manifest_rejects_path_traversal(tmp_path):
+    manifest = {
+        "schema_version": 1,
+        "external_source_code_included": False,
+        "fixtures": [{
+            "id": "bad.path",
+            "path": "../outside.cpp",
+            "standard": "c++11",
+            "expected": "CLEAN",
+            "sanitizers": ["address"],
+            "timeout_seconds": 5
+        }]
+    }
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="stay within"):
+        load_fixture_manifest(path)
+
+
+def test_runner_refuses_fixture_bytes_that_do_not_match_manifest_pin(tmp_path):
+    if not shutil.which(COMPILER):
+        pytest.skip(f"{COMPILER} is not installed")
+    fixture_root = tmp_path / "fixture"
+    fixture_root.mkdir()
+    (fixture_root / "control.cpp").write_text("int main() { return 0; }\n", encoding="utf-8")
+    manifest = {
+        "schema_version": 1,
+        "external_source_code_included": False,
+        "fixtures": [{
+            "id": "tampered.control.v1",
+            "path": "control.cpp",
+            "sha256": "0" * 64,
+            "standard": "c++11",
+            "expected": "CLEAN",
+            "sanitizers": ["address"],
+            "timeout_seconds": 5
+        }]
+    }
+    manifest_path = fixture_root / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="SHA-256 does not match"):
+        run_fixture("tampered.control.v1", compiler_name=COMPILER,
+                    manifest_path=manifest_path)
+
+
+def test_unknown_fixture_id_is_rejected():
+    if not shutil.which(COMPILER):
+        pytest.skip("g++ is not installed")
+    with pytest.raises(ValueError, match="unknown fixture ID"):
+        run_fixture("not-a-real-fixture", compiler_name=COMPILER, manifest_path=MANIFEST)
+
+
+@pytest.mark.parametrize(
+    ("fixture_id", "expected"),
+    [
+        (fixture["id"], fixture["expected"])
+        for fixture in load_fixture_manifest(MANIFEST)[1]["fixtures"]
+    ],
+)
+def test_fixture_reproduces_expected_compiler_or_sanitizer_result(fixture_id, expected):
+    if not shutil.which(COMPILER):
+        pytest.skip("g++ is not installed")
+    result = run_fixture(fixture_id, compiler_name=COMPILER, manifest_path=MANIFEST)
+    assert result["expected"] == expected
+    assert len(result["source_sha256"]) == 64
+    assert result["external_source_code_included"] is False
+    if expected == "BEHAVIOR_REPRODUCED":
+        assert result["passed"] is True
+        assert result["runs"][0]["outcome"] == "BEHAVIOR_REPRODUCED"
+    elif expected == "TSAN_FINDING":
+        outcome = result["runs"][0]["outcome"]
+        assert outcome in {"TSAN_FINDING", "SANITIZER_UNAVAILABLE"}
+        assert result["passed"] is (outcome == "TSAN_FINDING")
+        if outcome == "TSAN_FINDING":
+            assert "WARNING: ThreadSanitizer:" in result["runs"][0]["stderr"]
+    elif fixture_id == "cpp.thread.mutex-control.v1":
+        outcome = result["runs"][0]["outcome"]
+        assert outcome in {"CLEAN", "SANITIZER_UNAVAILABLE"}
+        assert result["passed"] is (outcome == "CLEAN")
+    else:
+        assert result["passed"], json.dumps(result, indent=2)
+        if expected in {"COMPILE_FAIL", "LINK_FAIL"}:
+            assert result["runs"][0]["failure_signature_matched"] is True
+        if expected == "CLEAN":
+            assert [run["outcome"] for run in result["runs"]] == ["CLEAN", "CLEAN"]
+
+
+def test_verify_cpp_cli_archives_the_compiler_evidence(tmp_path):
+    if not shutil.which(COMPILER):
+        pytest.skip("g++ is not installed")
+    from body_of_secrets.archive import Archive
+    from body_of_secrets.interface.cli import main
+
+    db_path = tmp_path / "verification.db"
+    exit_code = main([
+        "--db", str(db_path),
+        "verify-cpp",
+        "--fixture", "cpp.clean.unique-ptr-transfer.v1",
+        "--compiler", COMPILER,
+        "--manifest", str(MANIFEST),
+    ])
+    assert exit_code == 0
+    with Archive(db_path) as archive:
+        assert archive.count() == 1
+        hits = archive.search("cpp.clean.unique-ptr-transfer.v1", limit=5)
+        assert hits
