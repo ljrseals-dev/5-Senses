@@ -327,39 +327,47 @@ class AgentRuntime:
             return ToolResult("", tool.name, f"{type(exc).__name__}: {exc}", "ERROR")
 
     async def _execute_calls(self, calls: Sequence[ToolCall]) -> list[ToolResult]:
-        prepared: list[tuple[ToolCall, ToolSpec]] = []
-        results: list[ToolResult] = []
+        prepared: list[tuple[int, ToolCall, ToolSpec]] = []
+        ordered: dict[int, ToolResult] = {}
         seen_ids: set[str] = set()
-        for call in calls:
+        for index, call in enumerate(calls):
             if not call.call_id or call.call_id in seen_ids:
-                results.append(ToolResult(call.call_id, call.name, "missing or duplicate call ID", "REJECTED"))
+                ordered[index] = ToolResult(
+                    call.call_id, call.name, "missing or duplicate call ID", "REJECTED"
+                )
                 continue
             seen_ids.add(call.call_id)
             try:
                 tool = self.tools.get(call.name)
             except KeyError as exc:
-                results.append(ToolResult(call.call_id, call.name, str(exc), "REJECTED"))
+                ordered[index] = ToolResult(call.call_id, call.name, str(exc), "REJECTED")
                 continue
             if not self.permissions.permits(tool):
-                results.append(ToolResult(call.call_id, call.name, "permission denied", "DENIED"))
+                ordered[index] = ToolResult(
+                    call.call_id, call.name, "permission denied", "DENIED"
+                )
                 continue
             if not isinstance(call.arguments, Mapping):
-                results.append(ToolResult(call.call_id, call.name, "arguments must be an object", "REJECTED"))
+                ordered[index] = ToolResult(
+                    call.call_id, call.name, "arguments must be an object", "REJECTED"
+                )
                 continue
-            prepared.append((call, tool))
+            prepared.append((index, call, tool))
 
         if prepared and all(
-            tool.is_read_only and tool.is_concurrency_safe for _, tool in prepared
+            tool.is_read_only and tool.is_concurrency_safe for _, _, tool in prepared
         ):
             invoked = await asyncio.gather(
-                *(self._invoke(tool, call.arguments) for call, tool in prepared)
+                *(self._invoke(tool, call.arguments) for _, call, tool in prepared)
             )
-            results.extend(
-                ToolResult(call.call_id, result.name, result.output, result.status)
-                for (call, _), result in zip(prepared, invoked)
-            )
+            for (index, call, _), result in zip(prepared, invoked):
+                ordered[index] = ToolResult(
+                    call.call_id, result.name, result.output, result.status
+                )
         else:
-            for call, tool in prepared:
+            for index, call, tool in prepared:
                 result = await self._invoke(tool, call.arguments)
-                results.append(ToolResult(call.call_id, result.name, result.output, result.status))
-        return results
+                ordered[index] = ToolResult(
+                    call.call_id, result.name, result.output, result.status
+                )
+        return [ordered[index] for index in range(len(calls))]
