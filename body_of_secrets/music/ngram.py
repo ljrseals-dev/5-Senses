@@ -55,17 +55,23 @@ class MusicNGramModel(NGramModel):
     @classmethod
     def from_dict(cls,data):
         if not isinstance(data,dict) or data.get("schema")!=1: raise ValueError("unsupported music n-gram schema")
-        if not isinstance(data.get("vocab"),list) or any(not isinstance(token,str) for token in data["vocab"]):
+        order=data.get("order")
+        if not isinstance(order,int) or isinstance(order,bool) or order < 1:
+            raise ValueError("invalid music n-gram order")
+        if (not isinstance(data.get("vocab"),list)
+            or any(not isinstance(token,str) or not token for token in data["vocab"])
+            or len(set(data["vocab"])) != len(data["vocab"])):
             raise ValueError("invalid music n-gram vocabulary")
-        model=cls(int(data["order"])); model.vocab=set(data["vocab"])
+        model=cls(order); model.vocab=set(data["vocab"])
         if not isinstance(data.get("counts"),list):
             raise ValueError("invalid music n-gram counts")
         for item in data["counts"]:
             if not isinstance(item,dict) or not isinstance(item.get("context"),list) or not isinstance(item.get("next"),dict):
                 raise ValueError("invalid music n-gram count entry")
-            if len(item["context"]) != max(0,model.n-1) or any(not isinstance(t,str) for t in item["context"]):
+            if (len(item["context"]) != max(0,model.n-1)
+                or any(not isinstance(t,str) or t not in model.vocab for t in item["context"])):
                 raise ValueError("invalid music n-gram context")
-            if any(not isinstance(t,str) or not isinstance(c,int) or c < 1 for t,c in item["next"].items()):
+            if any(not isinstance(t,str) or not isinstance(c,int) or isinstance(c,bool) or c < 1 for t,c in item["next"].items()):
                 raise ValueError("invalid music n-gram counts")
             if not set(item["next"]).issubset(model.vocab):
                 raise ValueError("n-gram targets are missing from vocabulary")
