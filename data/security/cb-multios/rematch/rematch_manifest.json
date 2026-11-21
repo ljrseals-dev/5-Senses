@@ -1,0 +1,32 @@
+{
+  "dataset": "5-Senses CB-MultiOS REMATCH Defensive Learning Set",
+  "version": "0.3.0-draft",
+  "source_repository": "https://github.com/trailofbits/cb-multios",
+  "source_branch": "master",
+  "source_tree_sha": "810d7b24b1f62f56ef49b148fe155b0d0629cad2",
+  "scope": "All six top-level REMATCH challenge directories found in upstream cb-multios tree",
+  "cve_policy": "No CVE IDs are assigned to the synthetic CGC challenge binaries. Historical CVE references in upstream README files are retained only as inspiration/context metadata.",
+  "extraction_status": "six challenge READMEs reviewed; explicit CWE mappings transcribed; MITRE catalogue names independently checked",
+  "records": [
+    {"challenge_id":"REMATCH_1","title":"Hat Trick / Morris Worm","cwe_ids":["CWE-120","CWE-798","CWE-215"],"mapping_status":"upstream_explicit","cve_status":"no_cve_assigned_to_synthetic_challenge","upstream_readme":"challenges/REMATCH_1--Hat_Trick--Morris_Worm/README.md"},
+    {"challenge_id":"REMATCH_2","title":"Mail Server / Crackaddr","cwe_ids":["CWE-120"],"mapping_status":"upstream_explicit","cve_status":"no_cve_assigned_to_synthetic_challenge","upstream_readme":"challenges/REMATCH_2--Mail_Server--Crackaddr/README.md"},
+    {"challenge_id":"REMATCH_3","title":"Address Resolution Service / SQL Slammer","cwe_ids":["CWE-121"],"mapping_status":"upstream_explicit","cve_status":"no_cve_assigned_to_synthetic_challenge","upstream_readme":"challenges/REMATCH_3--Address_Resolution_Service--SQL_Slammer/README.md"},
+    {"challenge_id":"REMATCH_4","title":"CGC RPC Server / MS08-067","cwe_ids":["CWE-135"],"mapping_status":"upstream_explicit","cve_status":"no_cve_assigned_to_synthetic_challenge","upstream_readme":"challenges/REMATCH_4--CGCRPC_Server--MS08-067/README.md"},
+    {"challenge_id":"REMATCH_5","title":"File Explorer / LNK Bug","cwe_ids":["CWE-193"],"mapping_status":"upstream_explicit","cve_status":"no_cve_assigned_to_synthetic_challenge","upstream_readme":"challenges/REMATCH_5--File_Explorer--LNK_Bug/README.md"},
+    {"challenge_id":"REMATCH_6","title":"Secure Server / Heartbleed","cwe_ids":["CWE-788"],"mapping_status":"upstream_explicit","cve_status":"no_cve_assigned_to_synthetic_challenge","upstream_readme":"challenges/REMATCH_6--Secure_Server--Heartbleed/README.md"}
+  ],
+  "safety": "Descriptions are defensive summaries. POV payloads, exploit instructions, and operational trigger sequences are excluded.",
+  "validation": {
+    "record_count": 6,
+    "unique_challenge_ids": true,
+    "all_cwe_mappings_explicit_in_readme": true,
+    "mitre_name_validation": "checked_against_MITRE_CWE_catalogue_2026-11-21",
+    "schema_validation": "repository_test_added_pending_CI",
+    "mapping_semantics_review": "upstream_explicit_labels_preserved; CWE-788 flagged per MITRE discouraged mapping guidance"
+  },
+  "mitre_catalogue": {
+    "catalogue_version": "mixed_entry_versions_as_published_on_2026-11-21",
+    "checked_on": "2026-11-21",
+    "policy": "Canonical MITRE titles are supplemental metadata. Upstream challenge README labels remain authoritative for the dataset transcription; analyst semantic review remains a separate gate."
+  }
+}
