@@ -11,9 +11,9 @@ import json
 import re
 import unicodedata
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
 
 _TOKEN_RE = re.compile(r"[^\W_]+(?:['’][^\W_]+)?", re.UNICODE)
 _CONFUSIONS = (
@@ -52,23 +52,30 @@ def normalize_layout(text: str) -> str:
     """Apply reversible, content-neutral Unicode and whitespace cleanup only."""
     text = unicodedata.normalize("NFC", text.replace("\r\n", "\n").replace("\r", "\n"))
     text = text.replace("\x00", "")
+    # Preserve Unicode format characters (notably ZWJ/ZWNJ and bidi marks):
+    # deleting them can change the meaning or rendering of otherwise valid text.
     text = "".join(
         ch for ch in text
-        if ch in "\n\t" or unicodedata.category(ch) not in {"Cc", "Cf"}
+        if ch in "\n\t" or unicodedata.category(ch) != "Cc"
     )
-    lines = [_SPACE_RE.sub(" ", line).rstrip() for line in text.split("\n")]
-    # Collapse runs of blank lines but preserve paragraph boundaries.
+    has_trailing_newline = text.endswith("\n")
+    lines = text.split("\n")
+    if has_trailing_newline:
+        lines.pop()
+    lines = [_SPACE_RE.sub(" ", line).rstrip() for line in lines]
+    # Collapse repeated blank lines without stripping leading/trailing content.
     output: list[str] = []
     blank = False
     for line in lines:
         if not line.strip():
-            if output and not blank:
+            if not blank:
                 output.append("")
             blank = True
         else:
             output.append(line)
             blank = False
-    return "\n".join(output).strip() + ("\n" if text.endswith("\n") else "")
+    cleaned = "\n".join(output)
+    return cleaned + ("\n" if has_trailing_newline else "")
 
 
 def _token_candidates(token: str, vocabulary: set[str]) -> set[str]:
@@ -104,7 +111,7 @@ class EMOCRRanker:
         self.priors: dict[str, float] = {}
         self.channel: dict[tuple[str, str], float] = {}
 
-    def fit(self, texts: Iterable[str]) -> "EMOCRRanker":
+    def fit(self, texts: Iterable[str]) -> EMOCRRanker:
         counts: Counter[str] = Counter()
         for text in texts:
             counts.update(token.casefold() for token in _TOKEN_RE.findall(text))
@@ -222,7 +229,10 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
     if raw_source.is_symlink():
         raise ValueError("source_dir must not be a symlink")
     source = raw_source.resolve()
-    destination = Path(destination_dir).resolve()
+    raw_destination = Path(destination_dir)
+    if raw_destination.is_symlink():
+        raise ValueError("destination_dir must not be a symlink")
+    destination = raw_destination.resolve()
     if not source.is_dir():
         raise ValueError("source_dir must be a regular directory")
     if destination == source or source in destination.parents:
@@ -246,8 +256,8 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         if path.is_file() and not path.is_symlink()
         and path.suffix.lower() in {".txt", ".md", ".rst", ".text"}
     )
-    if max_file_bytes < 1:
-        raise ValueError("max_file_bytes must be positive")
+    if isinstance(max_file_bytes, bool) or not isinstance(max_file_bytes, int) or max_file_bytes < 1:
+        raise ValueError("max_file_bytes must be a positive integer")
     oversized = [path for path in files if path.stat().st_size > max_file_bytes]
     if oversized:
         raise ValueError(f"input exceeds max_file_bytes: {oversized[0]}")
@@ -263,38 +273,75 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         raise FileExistsError(manifest_path)
 
     results: list[CleanResult] = []
-    for path in files:
-        relative = path.relative_to(source)
-        output = destination / relative
-        review = review_root / (str(relative) + ".review.jsonl")
-        results.append(clean_file(
-            path, output, ranker=ranker, review_path=review,
-            apply_em_corrections=apply_em_corrections,
-        ))
-    manifest = {
-        "schema_version": 1,
-        "method": "corpus-local EM noisy-channel ranking plus conservative Unicode/layout normalization",
-        "model_training": "unsupervised corpus-local profile; not a pretrained model",
-        "em_iterations": iterations,
-        "em_corrections_applied": apply_em_corrections,
-        "source_root": str(source),
-        "review_root": str(review_root),
-        "files": [
-            {
-                "source": item.source, "output": item.output,
-                "raw_sha256": item.raw_sha256, "cleaned_sha256": item.cleaned_sha256,
-                "accepted_corrections": sum(1 for edit in item.edits
-                                            if edit.get("kind") == "em_ocr_correction"),
-                "review_proposals": sum(1 for proposal in item.proposals
-                                        if proposal.action == "REVIEW"),
-            }
-            for item in results
-        ],
-    }
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    with manifest_path.open("x", encoding="utf-8") as stream:
-        json.dump(manifest, stream, indent=2, ensure_ascii=False)
-        stream.write("\\n")
+    created_files: list[Path] = []
+    manifest_created = False
+    try:
+        for path in files:
+            relative = path.relative_to(source)
+            output = destination / relative
+            review = review_root / (str(relative) + ".review.jsonl")
+            result = clean_file(
+                path, output, ranker=ranker, review_path=review,
+                apply_em_corrections=apply_em_corrections,
+            )
+            results.append(result)
+            created_files.extend((output, review))
+
+        manifest = {
+            "schema_version": 1,
+            "method": "corpus-local EM noisy-channel ranking plus conservative Unicode/layout normalization",
+            "model_training": "unsupervised corpus-local profile; not a pretrained model",
+            "em_iterations": iterations,
+            "em_corrections_applied": apply_em_corrections,
+            "source_root": str(source),
+            "review_root": str(review_root),
+            "files": [
+                {
+                    "source": item.source, "output": item.output,
+                    "raw_sha256": item.raw_sha256, "cleaned_sha256": item.cleaned_sha256,
+                    "accepted_corrections": sum(1 for edit in item.edits
+                                                if edit.get("kind") == "em_ocr_correction"),
+                    "review_proposals": sum(1 for proposal in item.proposals
+                                            if proposal.action == "REVIEW"),
+                }
+                for item in results
+            ],
+        }
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        with manifest_path.open("x", encoding="utf-8") as stream:
+            manifest_created = True
+            json.dump(manifest, stream, indent=2, ensure_ascii=False)
+            stream.write("\n")
+    except Exception:
+        # Roll back only files this invocation successfully created. Never
+        # remove a path that appeared concurrently after our preflight.
+        for created_path in reversed(created_files):
+            try:
+                created_path.unlink()
+            except FileNotFoundError:
+                pass
+        if manifest_created:
+            try:
+                manifest_path.unlink()
+            except FileNotFoundError:
+                pass
+        # Prune empty directories only; leave concurrent/unowned files intact.
+        for root in (destination, review_root):
+            if root.exists() and root.is_dir() and not root.is_symlink():
+                descendants = sorted(
+                    (item for item in root.rglob("*") if item.is_dir() and not item.is_symlink()),
+                    key=lambda item: len(item.parts), reverse=True,
+                )
+                for directory in descendants:
+                    try:
+                        directory.rmdir()
+                    except OSError:
+                        pass
+                try:
+                    root.rmdir()
+                except OSError:
+                    pass
+        raise
     return results
 
 
@@ -338,14 +385,32 @@ def clean_file(source: str | Path, destination: str | Path, *,
             edits.append({"kind": "em_ocr_correction", "before": observed,
                           "after": candidate, "reason": "high-confidence EM proposal"})
         cleaned = corrected
+    if review is not None and review.resolve() == dst.resolve():
+        raise ValueError("review_path and destination must be different files")
     dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(cleaned, encoding="utf-8", newline="")
     if review is not None:
         review.parent.mkdir(parents=True, exist_ok=True)
-        review.write_text(
-            "".join(json.dumps(asdict(p), ensure_ascii=False) + "\n" for p in proposals),
-            encoding="utf-8",
-        )
+    # Exclusive creation closes the check-then-write race: never overwrite a
+    # file created by another process after the initial existence check.
+    created: list[Path] = []
+    try:
+        with dst.open("x", encoding="utf-8", newline="") as stream:
+            created.append(dst)
+            stream.write(cleaned)
+        if review is not None:
+            with review.open("x", encoding="utf-8", newline="") as stream:
+                created.append(review)
+                stream.write(
+                    "".join(json.dumps(asdict(p), ensure_ascii=False) + "\n"
+                            for p in proposals)
+                )
+    except Exception:
+        for created_path in reversed(created):
+            try:
+                created_path.unlink()
+            except OSError:
+                pass
+        raise
     return CleanResult(
         source=str(src), output=str(dst), raw_sha256=_sha256(raw_bytes),
         cleaned_sha256=_sha256(cleaned.encode("utf-8")),
