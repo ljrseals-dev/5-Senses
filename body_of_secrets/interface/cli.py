@@ -235,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     p_ng = sub.add_parser("ngram", help="Classical n-gram language model")
     p_ng.add_argument("--train", help="File path or raw text to train on")
     p_ng.add_argument("--n", type=int, default=3)
-    p_ng.add_argument("--level", choices=["word", "char"], default="word")
+    p_ng.add_argument("--level", choices=["word", "char", "token"], default="word")
     p_ng.add_argument("--generate", action="store_true")
     p_ng.add_argument("--length", type=int, default=40)
     p_ng.add_argument("--seed", default=None)
