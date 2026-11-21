@@ -8,6 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from body_of_secrets.scouting import corpora
 from body_of_secrets.scouting.integrity import (
     build_manifest,
     sha256_file,
@@ -19,6 +20,7 @@ from body_of_secrets.scouting.models import (
     acquire_model,
     write_model_inventory,
 )
+from body_of_secrets.scouting.corpora import CorpusCandidate, write_corpus_inventory
 
 
 def test_sha256_rejects_zero_or_non_integer_chunk_size(tmp_path: Path):
@@ -123,4 +125,37 @@ def test_model_inventory_rejects_overwrite(tmp_path: Path):
     candidate = ModelCandidate(repo_id="org/model")
     with pytest.raises(FileExistsError):
         write_model_inventory([candidate], path)
+    assert path.read_text(encoding="utf-8") == "keep"
+
+
+def test_dataset_search_rejects_invalid_query_and_timeout():
+    with pytest.raises(ValueError, match="query"):
+        corpora.search_huggingface_datasets(" ")
+    with pytest.raises(ValueError, match="timeout"):
+        corpora.search_huggingface_datasets("text", timeout=float("nan"))
+
+
+def test_dataset_search_rejects_malformed_catalog_payload(monkeypatch):
+    monkeypatch.setattr(corpora, "_get_json", lambda url, timeout: {"unexpected": []})
+    with pytest.raises(ValueError, match="catalog response"):
+        corpora.search_huggingface_datasets("history")
+
+
+def test_dataset_search_validates_tags(monkeypatch):
+    monkeypatch.setattr(corpora, "_get_json", lambda url, timeout: [{"id": "org/data", "tags": "not-a-list"}])
+    with pytest.raises(ValueError, match="tags"):
+        corpora.search_huggingface_datasets("history")
+
+
+def test_internet_archive_search_rejects_malformed_response(monkeypatch):
+    monkeypatch.setattr(corpora, "_get_json", lambda url, timeout: [])
+    with pytest.raises(ValueError, match="Internet Archive"):
+        corpora.search_internet_archive("history")
+
+
+def test_corpus_inventory_never_overwrites_existing_file(tmp_path: Path):
+    path = tmp_path / "corpora.json"
+    path.write_text("keep", encoding="utf-8")
+    with pytest.raises(FileExistsError):
+        write_corpus_inventory([CorpusCandidate("archive", "id-1")], path)
     assert path.read_text(encoding="utf-8") == "keep"
