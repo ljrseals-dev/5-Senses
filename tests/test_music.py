@@ -1,5 +1,6 @@
 """Tests for symbolic music learning."""
 import json,struct
+from body_of_secrets.language import NGramModel
 from body_of_secrets.music.corpus import CorpusWriter
 from body_of_secrets.music.encoder import encode_file
 from body_of_secrets.music.hopfield import MotifMemory,project_motif
@@ -28,6 +29,10 @@ def test_abc_encoding(tmp_path):
     path=tmp_path/"scale.abc"; path.write_text("X:1\nT:Scale\nL:1/4\nK:C\nC D E F G A B c |\n")
     encoded=encode_file(path)
     assert encoded.startswith("P060 D004 P062 D004") and "P072" in encoded
+def test_existing_ngram_supports_exact_symbolic_tokens():
+    model=NGramModel(n=2,level="token"); model.train(["P060 D004 P064 D004"])
+    assert "P060" in model.vocab and "D004" in model.vocab
+
 def test_ngram_case_entropy_and_snapshot_roundtrip(tmp_path):
     model=MusicNGramModel(3); model.train_lines(["P060 D004 P062 D004 P064 D004"])
     assert model.continuations("P060 D004")[0][0]=="P062"
