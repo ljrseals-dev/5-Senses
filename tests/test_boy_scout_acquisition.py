@@ -139,7 +139,7 @@ def test_dataset_search_rejects_invalid_query_and_timeout():
 
 def test_dataset_search_rejects_malformed_catalog_payload(monkeypatch):
     monkeypatch.setattr(corpora, "_get_json", lambda url, timeout: {"unexpected": []})
-    with pytest.raises(ValueError, match="catalog response"):
+    with pytest.raises(TypeError, match="catalog response"):
         corpora.search_huggingface_datasets("history")
 
 
@@ -151,7 +151,7 @@ def test_dataset_search_validates_tags(monkeypatch):
 
 def test_internet_archive_search_rejects_malformed_response(monkeypatch):
     monkeypatch.setattr(corpora, "_get_json", lambda url, timeout: [])
-    with pytest.raises(ValueError, match="Internet Archive"):
+    with pytest.raises(TypeError, match="Internet Archive"):
         corpora.search_internet_archive("history")
 
 
