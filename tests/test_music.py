@@ -9,10 +9,12 @@ from body_of_secrets.music.encoder import encode_file
 from body_of_secrets.music.hopfield import MotifMemory, project_motif
 from body_of_secrets.music.ngram import MusicNGramModel
 from body_of_secrets.music.snapshots import SnapshotStore
-from body_of_secrets.music.tokens import validate_tokens
 from body_of_secrets.music.teacher import LoggedTeacher
+from body_of_secrets.music.tokens import validate_tokens
 from body_of_secrets.music.training import train_music
 from body_of_secrets.music.validator import evaluate_uncertainty
+
+
 def _vlq(n):
     out=[n&127]; n>>=7
     while n: out.insert(0,(n&127)|128); n>>=7
