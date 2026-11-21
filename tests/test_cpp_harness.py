@@ -18,7 +18,9 @@ COMPILER = os.environ.get("CPP_FIXTURE_COMPILER", "g++")
 def test_manifest_contains_only_allowlisted_independent_fixtures():
     root, payload = load_fixture_manifest(MANIFEST)
     assert payload["external_source_code_included"] is False
-    assert len(payload["fixtures"]) == 10
+    fixture_ids = [fixture["id"] for fixture in payload["fixtures"]]
+    assert len(fixture_ids) >= 10
+    assert len(fixture_ids) == len(set(fixture_ids))
     for fixture in payload["fixtures"]:
         source = (root / fixture["path"]).resolve()
         assert root in source.parents
@@ -81,16 +83,8 @@ def test_unknown_fixture_id_is_rejected():
 @pytest.mark.parametrize(
     ("fixture_id", "expected"),
     [
-        ("cpp.compile.unique-ptr-copy.v1", "COMPILE_FAIL"),
-        ("cpp.link.pure-virtual-dtor.v1", "LINK_FAIL"),
-        ("cpp.asan.heap-use-after-free.v1", "ASAN_FINDING"),
-        ("cpp.ubsan.signed-overflow.v1", "UBSAN_FINDING"),
-        ("cpp.clean.unique-ptr-transfer.v1", "CLEAN"),
-        ("cpp.forwarding.lvalue-rvalue.v1", "CLEAN"),
-        ("cpp.forwarding.incorrect-move.v1", "BEHAVIOR_REPRODUCED"),
-        ("cpp.forwarding.value-category-cxx17.v1", "CLEAN"),
-        ("cpp.thread.data-race.v1", "TSAN_FINDING"),
-        ("cpp.thread.mutex-control.v1", "CLEAN"),
+        (fixture["id"], fixture["expected"])
+        for fixture in load_fixture_manifest(MANIFEST)[1]["fixtures"]
     ],
 )
 def test_fixture_reproduces_expected_compiler_or_sanitizer_result(fixture_id, expected):
