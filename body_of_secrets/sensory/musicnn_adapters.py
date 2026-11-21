@@ -91,6 +91,8 @@ def predict_msd_tags(model: object, patches: object, *, top_k: int = 10) -> Musi
         if raw_logits.ndim != 2 or raw_logits.shape != (batch.shape[0], 50):
             raise ValueError("MusicNN model must return logits shaped (patches, 50)")
         logits = raw_logits.float()
+        if not torch.isfinite(logits).all():
+            raise ValueError("MusicNN produced non-finite logits")
         probabilities = torch.sigmoid(logits)
         patch_probs = probabilities.cpu().tolist()
         patch_logits = logits.cpu().tolist()
@@ -125,6 +127,8 @@ def _confirmed_tags(tags: Iterable[str]) -> tuple[str, ...]:
     if isinstance(tags, (str, bytes)):
         raise TypeError("confirmed_tags must be an iterable of complete tag labels")
     selected = tuple(dict.fromkeys(tags))
+    if any(not isinstance(tag, str) for tag in selected):
+        raise TypeError("confirmed tag labels must be strings")
     unknown = sorted(set(selected) - set(MSD_TAGS))
     if unknown:
         raise ValueError(f"unknown MSD tags: {unknown}")
@@ -224,9 +228,11 @@ def archive_musicnn_analysis(
         f"Patch count: {analysis.patch_count}",
         "",
     ]
+    if len(analysis.mean_probabilities) != len(MSD_TAGS):
+        raise ValueError("analysis must contain all 50 mean probabilities")
     lines.extend(
-        f"{item.label}: {item.probability:.8f}"
-        for item in sorted(analysis.mean_scores, key=lambda item: item.index)
+        f"{label}: {probability:.8f}"
+        for label, probability in zip(MSD_TAGS, analysis.mean_probabilities)
     )
     metadata = {
         "subsystem": "ears",
