@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from body_of_secrets.cpp_harness import load_fixture_manifest, run_fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = REPO_ROOT / "tests" / "fixtures" / "cpp" / "manifest.json"
+COMPILER = os.environ.get("CPP_FIXTURE_COMPILER", "g++")
 
 
 def test_manifest_contains_only_allowlisted_independent_fixtures():
@@ -43,10 +45,10 @@ def test_manifest_rejects_path_traversal(tmp_path):
 
 
 def test_unknown_fixture_id_is_rejected():
-    if not shutil.which("g++"):
+    if not shutil.which(COMPILER):
         pytest.skip("g++ is not installed")
     with pytest.raises(ValueError, match="unknown fixture ID"):
-        run_fixture("not-a-real-fixture", compiler_name="g++", manifest_path=MANIFEST)
+        run_fixture("not-a-real-fixture", compiler_name=COMPILER, manifest_path=MANIFEST)
 
 
 @pytest.mark.parametrize(
@@ -60,9 +62,9 @@ def test_unknown_fixture_id_is_rejected():
     ],
 )
 def test_fixture_reproduces_expected_compiler_or_sanitizer_result(fixture_id, expected):
-    if not shutil.which("g++"):
+    if not shutil.which(COMPILER):
         pytest.skip("g++ is not installed")
-    result = run_fixture(fixture_id, compiler_name="g++", manifest_path=MANIFEST)
+    result = run_fixture(fixture_id, compiler_name=COMPILER, manifest_path=MANIFEST)
     assert result["expected"] == expected
     assert result["passed"], json.dumps(result, indent=2)
     assert len(result["source_sha256"]) == 64
@@ -74,7 +76,7 @@ def test_fixture_reproduces_expected_compiler_or_sanitizer_result(fixture_id, ex
 
 
 def test_verify_cpp_cli_archives_the_compiler_evidence(tmp_path):
-    if not shutil.which("g++"):
+    if not shutil.which(COMPILER):
         pytest.skip("g++ is not installed")
     from body_of_secrets.archive import Archive
     from body_of_secrets.interface.cli import main
@@ -84,7 +86,7 @@ def test_verify_cpp_cli_archives_the_compiler_evidence(tmp_path):
         "--db", str(db_path),
         "verify-cpp",
         "--fixture", "cpp.clean.unique-ptr-transfer.v1",
-        "--compiler", "g++",
+        "--compiler", COMPILER,
         "--manifest", str(MANIFEST),
     ])
     assert exit_code == 0
