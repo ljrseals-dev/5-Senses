@@ -5,7 +5,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from body_of_secrets.archive import Archive
+from body_of_secrets.archive import Archive  # noqa: E402
 from body_of_secrets.expert import ExpertSystem
 from body_of_secrets.language import NGramModel
 from body_of_secrets.neural import HopfieldNetwork, MLP
