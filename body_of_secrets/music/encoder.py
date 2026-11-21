@@ -1,6 +1,7 @@
 """Deterministic MIDI (SMF 0/1) and basic ABC encoders; no extra dependencies."""
 # ruff: noqa: E701, E702, E704
 from __future__ import annotations
+import math
 import re
 import struct
 from collections import defaultdict, deque
@@ -88,7 +89,7 @@ def _midi(path: Path) -> str:
     tokens, previous_end = [], 0
     for start in sorted(grouped):
         event = sorted(grouped[start])
-        if start - previous_end >= division // 8:
+        if start - previous_end >= division / 8:
             tokens.append("DRST")
         for pitch, ticks in event:
             if len(event) > 1: tokens.append("CHD")
@@ -104,8 +105,11 @@ def _abc(path: Path) -> str:
     unit = .5
     for line in text.splitlines():
         match = re.match(r"\s*L:\s*(\d+)\s*/\s*(\d+)", line)
-        if match and int(match.group(2)):
-            unit = 4 * int(match.group(1)) / int(match.group(2))
+        if match:
+            numerator, denominator = int(match.group(1)), int(match.group(2))
+            if numerator <= 0 or denominator <= 0:
+                raise ValueError("ABC default note length must be positive")
+            unit = 4 * numerator / denominator
     body = "\n".join(line for line in text.splitlines() if not re.match(r"\s*[A-Za-z]:", line))
     body = re.sub(r'"[^"]*"|![^!]*!|%.*', " ", body)
     semitones = dict(zip("CDEFGAB", (0, 2, 4, 5, 7, 9, 11)))
@@ -128,7 +132,7 @@ def _abc(path: Path) -> str:
         if "=" in accidental:
             pitch = 60 + (octave - 4) * 12 + semitones[letter.upper()]
         if not 0 <= pitch <= 127:
-            return
+            raise ValueError("ABC note pitch is outside MIDI range 0..127")
         length = duration_override or length
         multiplier = 1.0
         if length:
@@ -137,6 +141,8 @@ def _abc(path: Path) -> str:
                 multiplier = (float(numerator) if numerator else 1.0) / (float(denominator) if denominator else 2.0)
             else:
                 multiplier = float(length)
+            if not math.isfinite(multiplier) or multiplier <= 0:
+                raise ValueError("ABC note duration must be finite and positive")
         if chord:
             tokens.append("CHD")
         tokens.extend((f"P{pitch:03d}", _duration(unit * multiplier)))
