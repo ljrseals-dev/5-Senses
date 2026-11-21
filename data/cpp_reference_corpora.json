@@ -8,18 +8,20 @@
       "repository": "BartVandewoestyne/Cpp",
       "url": "https://github.com/BartVandewoestyne/Cpp",
       "default_branch": "master",
-      "revision_status": "UNPINNED",
+      "revision_status": "PINNED",
       "license_status": "UNVERIFIED_HOLD",
-      "purpose": "Historical and cross-standard examples, experiments, exercises, and portability context."
+      "purpose": "Historical and cross-standard examples, experiments, exercises, and portability context.",
+      "revision": "376ae463ee95ee5723e74322b7fa25a59e972ac9"
     },
     {
       "id": "effective-modern-cpp",
       "repository": "BartVandewoestyne/Effective-Modern-Cpp",
       "url": "https://github.com/BartVandewoestyne/Effective-Modern-Cpp",
       "default_branch": "master",
-      "revision_status": "UNPINNED",
+      "revision_status": "PINNED",
       "license_status": "UNVERIFIED_HOLD",
-      "purpose": "Modern C++ semantics and compilable examples associated with the 42 Items of Effective Modern C++."
+      "purpose": "Modern C++ semantics and compilable examples associated with the 42 Items of Effective Modern C++.",
+      "revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539"
     }
   ],
   "records": [
@@ -27,9 +29,15 @@
       "id": "cpp98-pure-virtual-destructor",
       "source_id": "bart-cpp",
       "source_path": null,
-      "source_revision": null,
-      "language_standard": ["c++98"],
-      "concepts": ["object-lifetime", "destructor", "linkage"],
+      "source_revision": "376ae463ee95ee5723e74322b7fa25a59e972ac9",
+      "language_standard": [
+        "c++98"
+      ],
+      "concepts": [
+        "object-lifetime",
+        "destructor",
+        "linkage"
+      ],
       "item_number": null,
       "rights_status": "UNVERIFIED_HOLD",
       "summary": "Historical pattern: a pure virtual destructor still requires an out-of-class definition when destruction of derived objects must link.",
@@ -40,9 +48,17 @@
       "id": "cpp-emc-item18-unique-ptr",
       "source_id": "effective-modern-cpp",
       "source_path": null,
-      "source_revision": null,
-      "language_standard": ["c++11", "c++14", "c++17"],
-      "concepts": ["unique-ptr", "ownership", "move-semantics"],
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "unique-ptr",
+        "ownership",
+        "move-semantics"
+      ],
       "item_number": 18,
       "rights_status": "UNVERIFIED_HOLD",
       "summary": "Modern ownership example candidate: unique_ptr expresses exclusive ownership and transfers ownership through moves.",
@@ -53,9 +69,17 @@
       "id": "cpp-emc-shared-ptr",
       "source_id": "effective-modern-cpp",
       "source_path": null,
-      "source_revision": null,
-      "language_standard": ["c++11", "c++14", "c++17"],
-      "concepts": ["shared-ptr", "ownership", "reference-counting"],
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "shared-ptr",
+        "ownership",
+        "reference-counting"
+      ],
       "item_number": null,
       "rights_status": "UNVERIFIED_HOLD",
       "summary": "Shared ownership candidate: shared_ptr maintains shared lifetime through its control block.",
@@ -66,9 +90,17 @@
       "id": "cpp-emc-weak-ptr",
       "source_id": "effective-modern-cpp",
       "source_path": null,
-      "source_revision": null,
-      "language_standard": ["c++11", "c++14", "c++17"],
-      "concepts": ["weak-ptr", "ownership", "lifetime"],
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "weak-ptr",
+        "ownership",
+        "lifetime"
+      ],
       "item_number": null,
       "rights_status": "UNVERIFIED_HOLD",
       "summary": "Non-owning observation candidate: weak_ptr does not extend the lifetime of the shared object.",
@@ -79,9 +111,16 @@
       "id": "cpp-emc-move-semantics",
       "source_id": "effective-modern-cpp",
       "source_path": null,
-      "source_revision": null,
-      "language_standard": ["c++11", "c++14", "c++17"],
-      "concepts": ["move-semantics", "value-categories"],
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "move-semantics",
+        "value-categories"
+      ],
       "item_number": null,
       "rights_status": "UNVERIFIED_HOLD",
       "summary": "std::move is a cast that enables move-aware overload resolution; it does not itself move a resource.",
@@ -92,9 +131,17 @@
       "id": "cpp-emc-item-forwarding",
       "source_id": "effective-modern-cpp",
       "source_path": null,
-      "source_revision": null,
-      "language_standard": ["c++11", "c++14", "c++17"],
-      "concepts": ["perfect-forwarding", "reference-collapsing", "templates"],
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "perfect-forwarding",
+        "reference-collapsing",
+        "templates"
+      ],
       "item_number": null,
       "rights_status": "UNVERIFIED_HOLD",
       "summary": "Forwarding-reference candidate: T&& with deduced T and std::forward<T> preserves the caller's value category.",
@@ -105,9 +152,17 @@
       "id": "cpp-emc-type-deduction",
       "source_id": "effective-modern-cpp",
       "source_path": null,
-      "source_revision": null,
-      "language_standard": ["c++11", "c++14", "c++17"],
-      "concepts": ["type-deduction", "auto", "decltype"],
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "type-deduction",
+        "auto",
+        "decltype"
+      ],
       "item_number": null,
       "rights_status": "UNVERIFIED_HOLD",
       "summary": "Type-deduction candidate: auto and decltype follow different deduction rules, particularly around references and value categories.",
@@ -118,9 +173,17 @@
       "id": "cpp-emc-concurrency",
       "source_id": "effective-modern-cpp",
       "source_path": null,
-      "source_revision": null,
-      "language_standard": ["c++11", "c++14", "c++17"],
-      "concepts": ["concurrency", "data-race", "synchronization"],
+      "source_revision": "a1d8f84ee679a92fade7b4ca3fa46f9f48886539",
+      "language_standard": [
+        "c++11",
+        "c++14",
+        "c++17"
+      ],
+      "concepts": [
+        "concurrency",
+        "data-race",
+        "synchronization"
+      ],
       "item_number": null,
       "rights_status": "UNVERIFIED_HOLD",
       "summary": "Concurrency candidate: thread-safe lifetime management does not make unsynchronized access to the managed object race-free.",
