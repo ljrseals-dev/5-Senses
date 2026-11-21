@@ -8,6 +8,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 pytest.importorskip("librosa")
+pytest.importorskip("soundfile")
 
 from body_of_secrets.sensory.musicnn_adapters import predict_msd_tags  # noqa: E402
 from body_of_secrets.sensory.musicnn_frontend import make_patches, waveform_to_logmel  # noqa: E402
