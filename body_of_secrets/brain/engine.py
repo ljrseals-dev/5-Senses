@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from threading import Lock
 
-from body_of_secrets import __version__, __disclaimer__
+from body_of_secrets import __disclaimer__, __version__
 from body_of_secrets.archive import Archive
 from body_of_secrets.expert import ExpertSystem, build_default_expert
 from .evidence import Evidence, extract_evidence
