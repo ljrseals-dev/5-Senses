@@ -47,6 +47,11 @@ def test_abc_encoding(tmp_path):
     encoded=encode_file(path)
     assert encoded.startswith("P060 D004 P062 D004") and "P072" in encoded
 
+def test_abc_rest_is_preserved(tmp_path):
+    path=tmp_path/"rest.abc"
+    path.write_text("X:1\\nL:1/4\\nK:C\\nC z2 D |\\n")
+    assert encode_file(path)=="P060 D004 DRST P062 D004"
+
 def test_abc_bracket_chord_is_grouped_polyphonically(tmp_path):
     path=tmp_path/"chord.abc"
     path.write_text("X:1\nL:1/4\nK:C\n[CEG]2 D |\n")
