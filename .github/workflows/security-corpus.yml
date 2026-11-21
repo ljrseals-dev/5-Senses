@@ -3,18 +3,18 @@ name: Security corpus tests
 on:
   pull_request:
     paths:
-      - "body_of_secrets/security/**"
+      - "body_of_secrets/**"
       - "data/security/cb-multios/rematch/**"
-      - "tests/test_security_cb_multios.py"
+      - "tests/**"
       - "pyproject.toml"
       - ".github/workflows/security-corpus.yml"
   push:
     branches:
       - "security/**"
     paths:
-      - "body_of_secrets/security/**"
+      - "body_of_secrets/**"
       - "data/security/cb-multios/rematch/**"
-      - "tests/test_security_cb_multios.py"
+      - "tests/**"
       - "pyproject.toml"
       - ".github/workflows/security-corpus.yml"
 
