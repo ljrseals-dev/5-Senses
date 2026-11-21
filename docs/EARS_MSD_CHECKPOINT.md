@@ -95,9 +95,30 @@ implementation regression fixture, not an upstream-provided reference pair.
 Preprocessing parity remains unverified until compared against an independent
 reference output generated under the original dependency versions.
 
+## Classical subsystem adapters
+
+The ordered 50-label vocabulary is preserved exactly as published by the
+MusicNN PyTorch port. Inference returns sigmoid probabilities (not softmax),
+keeps per-patch scores, and averages probabilities across patches as the
+reference inference utility does.
+
+The adapters expose the 50 probabilities as MLP input features. MLP updates,
+Hopfield patterns, and n-gram training require an explicit human-confirmed
+tag list and a non-empty confirmation source. A registered Expert rule marks
+MusicNN outputs as [UNKNOWN]; it does not turn predicted tags into facts.
+Archive records include all 50 scores, the audio SHA-256, checkpoint SHA-256,
+resolved preprocessing configuration and its hash, tag-vocabulary hash,
+checkpoint dtype inventory, and integration commit SHA.
+
+The model loader and adapters do not download weights or call a model hub.
+The offline test blocks socket creation while loading a local checkpoint,
+preprocessing a local waveform, and running inference.
+
 ## Tag quality is separate
 
 Numerical parity does not establish musical usefulness. No Expert rule may
 treat an MSD tag as a verified fact. A held-out, provenance-recorded track set
 with expected tag behavior and per-tag evaluation is required before making
-tag-quality claims or authoring authoritative Expert rules.
+tag-quality claims or authoring authoritative Expert rules. The provenance
+record hard-codes numerical-equivalence, preprocessing-parity, and tag-quality
+verification flags to false; those flags cannot be promoted by inference.
