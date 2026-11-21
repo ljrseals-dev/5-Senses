@@ -229,7 +229,10 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
     if raw_source.is_symlink():
         raise ValueError("source_dir must not be a symlink")
     source = raw_source.resolve()
-    destination = Path(destination_dir).resolve()
+    raw_destination = Path(destination_dir)
+    if raw_destination.is_symlink():
+        raise ValueError("destination_dir must not be a symlink")
+    destination = raw_destination.resolve()
     if not source.is_dir():
         raise ValueError("source_dir must be a regular directory")
     if destination == source or source in destination.parents:
@@ -253,8 +256,8 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         if path.is_file() and not path.is_symlink()
         and path.suffix.lower() in {".txt", ".md", ".rst", ".text"}
     )
-    if max_file_bytes < 1:
-        raise ValueError("max_file_bytes must be positive")
+    if isinstance(max_file_bytes, bool) or not isinstance(max_file_bytes, int) or max_file_bytes < 1:
+        raise ValueError("max_file_bytes must be a positive integer")
     oversized = [path for path in files if path.stat().st_size > max_file_bytes]
     if oversized:
         raise ValueError(f"input exceeds max_file_bytes: {oversized[0]}")
