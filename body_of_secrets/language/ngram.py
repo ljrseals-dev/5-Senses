@@ -20,8 +20,8 @@ class NGramModel:
     """Character-, word-, or exact-token n-gram model with Laplace smoothing."""
 
     def __init__(self, n: int = 3, level: str = "word"):
-        if n < 1:
-            raise ValueError("n must be >= 1")
+        if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+            raise ValueError("n must be a positive integer")
         if level not in ("word", "char", "token"):
             raise ValueError("level must be 'word', 'char', or 'token'")
         self.n = n
