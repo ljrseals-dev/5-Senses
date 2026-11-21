@@ -180,7 +180,14 @@ def _run_one(source: Path, compiler: str, standard: str, sanitizer: str | None,
     if compile_result["timed_out"]:
         return {"outcome": "TIMEOUT", "phase": "compile", "flags": flags, **compile_result}
     if compile_result["returncode"] != 0:
-        return {"outcome": "COMPILE_FAIL", "phase": "compile", "flags": flags, **compile_result}
+        diagnostic = compile_result["stderr"] + compile_result["stdout"]
+        deleted_copy = any(token in diagnostic.lower() for token in (
+            "use of deleted function", "deleted function", "is deleted",
+            "call to deleted constructor",
+        ))
+        outcome = "COMPILE_FAIL" if deleted_copy else "UNEXPECTED_COMPILE_FAIL"
+        return {"outcome": outcome, "phase": "compile", "flags": flags,
+                "failure_signature_matched": deleted_copy, **compile_result}
 
     link_result = _run(
         [compiler, *flags, str(obj), "-o", str(exe)],
@@ -189,7 +196,15 @@ def _run_one(source: Path, compiler: str, standard: str, sanitizer: str | None,
     if link_result["timed_out"]:
         return {"outcome": "TIMEOUT", "phase": "link", "flags": flags, **link_result}
     if link_result["returncode"] != 0:
-        return {"outcome": "LINK_FAIL", "phase": "link", "flags": flags, **link_result}
+        diagnostic = link_result["stderr"] + link_result["stdout"]
+        unresolved = any(token in diagnostic.lower() for token in (
+            "undefined reference", "undefined symbol", "unresolved external",
+        ))
+        destructor_symbol = "interface::~interface" in diagnostic.lower()
+        matched = unresolved and destructor_symbol
+        outcome = "LINK_FAIL" if matched else "UNEXPECTED_LINK_FAIL"
+        return {"outcome": outcome, "phase": "link", "flags": flags,
+                "failure_signature_matched": matched, **link_result}
 
     execute_result = _run([str(exe)], cwd=work, timeout=timeout)
     if execute_result["timed_out"]:
