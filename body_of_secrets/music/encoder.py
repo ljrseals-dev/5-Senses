@@ -34,7 +34,9 @@ def _midi(path: Path) -> str:
     fmt, tracks, division = struct.unpack(">HHH", data[8:14])
     if fmt not in (0, 1) or tracks < 1 or (fmt == 0 and tracks != 1) or division == 0 or division & 0x8000:
         raise ValueError("only PPQ-based MIDI formats 0 and 1 are supported")
-    pos, active, notes = 8 + hlen, defaultdict(deque), []
+    pos = 8 + hlen
+    active: defaultdict[tuple[int, int], deque[int]] = defaultdict(deque)
+    notes: list[tuple[int, int, int]] = []
     for _ in range(tracks):
         if pos + 8 > len(data):
             raise ValueError("truncated MIDI track header")
@@ -158,7 +160,7 @@ def _abc(path: Path) -> str:
             tokens.append("CHD")
         tokens.extend((f"P{pitch:03d}", _duration(unit * multiplier)))
 
-    tokens = []
+    tokens: list[str] = []
     for event in _ABC_EVENT.finditer(body):
         if event.group(1) is not None:
             notes = _ABC_NOTE.findall(event.group(1))
@@ -183,7 +185,7 @@ def encode_file(path: str | Path) -> str:
 def encode_directory(directory: str | Path, output: str | Path | None = None) -> list[dict[str, str]]:
     root = Path(directory)
     if not root.is_dir(): raise NotADirectoryError(root)
-    records = []
+    records: list[dict[str, str]] = []
     for path in sorted(p for p in root.rglob("*") if p.is_file() and not p.is_symlink() and p.suffix.lower() in {".mid", ".midi", ".abc"}):
         tokens = encode_file(path)
         if tokens: records.append({"source": path.relative_to(root).as_posix(), "tokens": tokens})
