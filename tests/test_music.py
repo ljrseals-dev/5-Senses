@@ -169,6 +169,6 @@ def test_ngram_rejects_non_integer_order():
 
 def test_abc_zero_duration_denominator_is_rejected(tmp_path):
     path=tmp_path/"invalid-duration.abc"
-    path.write_text("X:1\\nL:1/4\\nK:C\\nC1/0 D |\\n")
+    path.write_text("X:1\nL:1/4\nK:C\nC1/0 D |\n")
     with pytest.raises(ValueError,match="denominator must be non-zero"):
         encode_file(path)
