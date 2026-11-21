@@ -13,9 +13,9 @@ from body_of_secrets.brain import Engine
 from body_of_secrets.expert import build_default_expert
 from body_of_secrets.language import NGramModel
 from body_of_secrets.memory import Memory
+from body_of_secrets.music.cli import main as music_main
 from body_of_secrets.neural import demo_hopfield, demo_xor
 from body_of_secrets.scouting.cleaning import clean_directory
-from body_of_secrets.music.cli import main as music_main
 
 
 def _cmd_ask(args: argparse.Namespace) -> int:
