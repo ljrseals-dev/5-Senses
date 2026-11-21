@@ -11,6 +11,7 @@ import inspect
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Protocol, Sequence
+import math
 
 
 JsonObject = Mapping[str, Any]
@@ -44,6 +45,10 @@ class ToolSpec:
             raise TypeError("tool handler must be callable")
         if not isinstance(self.description, str):
             raise TypeError("tool description must be a string")
+        if not all(isinstance(flag, bool) for flag in (
+            self.is_read_only, self.is_concurrency_safe, self.is_destructive
+        )):
+            raise TypeError("tool capability flags must be booleans")
         if self.is_destructive and self.is_read_only:
             raise ValueError("a destructive tool cannot be declared read-only")
         if self.is_concurrency_safe and not self.is_read_only:
@@ -67,6 +72,8 @@ class ToolRegistry:
         self._tools: dict[str, ToolSpec] = {}
 
     def register(self, tool: ToolSpec) -> None:
+        if not isinstance(tool, ToolSpec):
+            raise TypeError("only ToolSpec instances can be registered")
         if tool.name in self._tools:
             raise ValueError(f"tool already registered: {tool.name}")
         self._tools[tool.name] = tool
@@ -95,6 +102,12 @@ class PermissionPolicy:
     allow_read_only: bool = True
     allow_mutating: bool = False
     allow_destructive: bool = False
+
+    def __post_init__(self) -> None:
+        if not all(isinstance(flag, bool) for flag in (
+            self.allow_read_only, self.allow_mutating, self.allow_destructive
+        )):
+            raise TypeError("permission policy values must be booleans")
 
     def permits(self, tool: ToolSpec) -> bool:
         if tool.is_destructive:
@@ -144,7 +157,7 @@ class ToolResult:
 class AgentState:
     session_id: str
     status: AgentStatus = AgentStatus.READY
-    messages: list[dict[str, str]] = field(default_factory=list)
+    messages: list[dict[str, Any]] = field(default_factory=list)
     turn: int = 0
     transitions: list[str] = field(default_factory=list)
     final_text: str = ""
@@ -189,10 +202,28 @@ class AgentRuntime:
         keep_recent_messages: int = 12,
         compactor: ContextCompactor | None = None,
     ) -> None:
-        if max_turns < 1 or tool_timeout_seconds <= 0 or model_idle_timeout_seconds <= 0:
-            raise ValueError("turn and timeout limits must be positive")
-        if max_backend_retries < 0 or compact_after_messages < 2 or keep_recent_messages < 1:
-            raise ValueError("invalid retry or context limits")
+        if isinstance(max_turns, bool) or not isinstance(max_turns, int) or max_turns < 1:
+            raise ValueError("max_turns must be a positive integer")
+        if isinstance(max_backend_retries, bool) or not isinstance(max_backend_retries, int) or max_backend_retries < 0:
+            raise ValueError("max_backend_retries must be a non-negative integer")
+        if isinstance(compact_after_messages, bool) or not isinstance(compact_after_messages, int) or compact_after_messages < 2:
+            raise ValueError("compact_after_messages must be an integer of at least 2")
+        if isinstance(keep_recent_messages, bool) or not isinstance(keep_recent_messages, int) or keep_recent_messages < 1:
+            raise ValueError("keep_recent_messages must be a positive integer")
+        if not all(
+            isinstance(value, (int, float)) and not isinstance(value, bool)
+            and math.isfinite(value) and value > 0
+            for value in (tool_timeout_seconds, model_idle_timeout_seconds)
+        ):
+            raise ValueError("timeouts must be finite positive numbers")
+        if not callable(getattr(backend, "stream", None)):
+            raise TypeError("backend must provide a callable stream method")
+        if tools is not None and not isinstance(tools, ToolRegistry):
+            raise TypeError("tools must be a ToolRegistry")
+        if permissions is not None and not isinstance(permissions, PermissionPolicy):
+            raise TypeError("permissions must be a PermissionPolicy")
+        if compactor is not None and not callable(compactor):
+            raise TypeError("compactor must be callable")
         self.backend = backend
         self.tools = tools or ToolRegistry()
         self.permissions = permissions or PermissionPolicy()
@@ -246,7 +277,10 @@ class AgentRuntime:
                         )
                         recent = state.messages[-self.keep_recent_messages:]
                         if first_user is not None and first_user not in recent:
-                            recent = [first_user, *recent[-(self.keep_recent_messages - 1):]]
+                            tail_count = self.keep_recent_messages - 1
+                            recent = [first_user, *(
+                                state.messages[-tail_count:] if tail_count else []
+                            )]
                         state.messages = recent
                         yield AgentEvent("context_trimmed", state.turn, {
                             "message_count": len(state.messages),
@@ -365,7 +399,11 @@ class AgentRuntime:
                 )
             except StopAsyncIteration:
                 return
+            if not isinstance(item, ModelEvent):
+                raise TypeError("backend must yield ModelEvent instances")
             yield item
+            if item.kind == "complete":
+                return
 
     def _should_compact(self, messages: Sequence[Mapping[str, Any]]) -> bool:
         return len(messages) >= self.compact_after_messages
