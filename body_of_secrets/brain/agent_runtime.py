@@ -134,8 +134,12 @@ class ToolCall:
     arguments: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not isinstance(self.call_id, str) or not isinstance(self.name, str):
-            raise TypeError("tool call ID and name must be strings")
+        if not isinstance(self.call_id, str) or not self.call_id.strip():
+            raise ValueError("tool call ID must be a non-empty string")
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ValueError("tool name must be a non-empty string")
+        if not isinstance(self.arguments, Mapping):
+            raise TypeError("tool call arguments must be a mapping")
 
 
 @dataclass(frozen=True)
@@ -336,6 +340,14 @@ class AgentRuntime:
                 return
 
             assistant_text = "".join(text_parts)
+            call_ids = [call.call_id for call in calls]
+            if len(call_ids) != len(set(call_ids)):
+                state.last_error = "backend returned duplicate tool call IDs"
+                state.status = AgentStatus.FAILED
+                state.transitions.append("WAITING_FOR_MODEL->FAILED")
+                yield AgentEvent("error", state.turn, {"error": state.last_error})
+                yield AgentEvent("state", state.turn, {"status": state.status.value})
+                return
             if assistant_text or calls:
                 assistant_message: dict[str, Any] = {
                     "role": "assistant",
