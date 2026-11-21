@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+
+
 TOKEN_RE=re.compile(r"^(?:P(?:0[0-9]{2}|1[01][0-9]|12[0-7])|D(?:016|008|004|002|001)|DRST|CHD|B)$")
 PITCH_RE=re.compile(r"^P(\d{3})$")
 DURATION_BEATS={"D016":.25,"D008":.5,"D004":1.,"D002":2.,"D001":4.}
