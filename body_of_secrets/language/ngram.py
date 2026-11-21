@@ -91,7 +91,9 @@ class NGramModel:
         # Start from a random observed context or the provided seed
         if seed:
             tokens = self._tokens(seed)
-            if len(tokens) >= self.n - 1:
+            if self.n == 1:
+                context = ()
+            elif len(tokens) >= self.n - 1:
                 context = tuple(tokens[-(self.n - 1) :])
             else:
                 context = tuple(tokens) + ("",) * (self.n - 1 - len(tokens))
@@ -111,7 +113,7 @@ class NGramModel:
                 weights = [c + 0.1 for _, c in items]
                 next_tok = random.choices([t for t, _ in items], weights=weights, k=1)[0]
             output.append(next_tok)
-            context = tuple(output[-(self.n - 1) :])
+            context = () if self.n == 1 else tuple(output[-(self.n - 1) :])
 
         if self.level == "char":
             return "".join(output)
@@ -119,7 +121,9 @@ class NGramModel:
 
     def most_likely_continuations(self, prefix: str, k: int = 5) -> list[tuple[str, float]]:
         tokens = self._tokens(prefix)
-        if len(tokens) < self.n - 1:
+        if self.n == 1:
+            context = ()
+        elif len(tokens) < self.n - 1:
             context = tuple(tokens)
         else:
             context = tuple(tokens[-(self.n - 1) :])
