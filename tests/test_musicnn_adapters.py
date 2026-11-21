@@ -6,14 +6,14 @@ import pytest
 torch = pytest.importorskip("torch")
 
 from body_of_secrets.archive import Archive  # noqa: E402
-from body_of_secrets.expert import ExpertSystem
-from body_of_secrets.language import NGramModel
-from body_of_secrets.neural import HopfieldNetwork, MLP
-from body_of_secrets.sensory.msd_tags import MSD_TAGS
+from body_of_secrets.expert import ExpertSystem  # noqa: E402
+from body_of_secrets.language import NGramModel  # noqa: E402
+from body_of_secrets.neural import HopfieldNetwork, MLP  # noqa: E402
+from body_of_secrets.sensory.msd_tags import MSD_TAGS  # noqa: E402
 from body_of_secrets.sensory.musicnn_frontend import preprocessing_record  # noqa: E402
 from body_of_secrets.sensory.musicnn_msd import MusicnnMSD  # noqa: E402
 from body_of_secrets.sensory.musicnn_provenance import build_musicnn_provenance  # noqa: E402
-from body_of_secrets.sensory.musicnn_adapters import (
+from body_of_secrets.sensory.musicnn_adapters import (  # noqa: E402
     archive_musicnn_analysis,
     confirmed_hopfield_pattern,
     musicnn_mlp_features,
