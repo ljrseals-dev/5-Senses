@@ -51,6 +51,7 @@ all = [
 
 [project.scripts]
 body-of-secrets = "body_of_secrets.interface.cli:main"
+body-of-secrets-music = "body_of_secrets.music.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
