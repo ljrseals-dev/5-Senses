@@ -1,5 +1,5 @@
 """Music adapter over the existing NGramModel, preserving exact symbolic tokens."""
-# ruff: noqa: E701, E702, E704
+# ruff: noqa: E401, E701, E702, E704
 from __future__ import annotations
 import json,math
 from pathlib import Path
