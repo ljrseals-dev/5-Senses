@@ -5,8 +5,9 @@
 ## Scope and provenance
 
 - Upstream: https://github.com/trailofbits/cb-multios
-- Upstream ref reviewed: `master`
-- Upstream tree SHA recorded in `rematch_manifest.json`: `810d7b24b1f62f56ef49b148fe155b0d0629cad2`
+- Upstream branch reviewed: `master`
+- Immutable upstream commit: `810d7b24b1f62f56ef49b148fe155b0d0629cad2`
+- Upstream tree SHA: `59864cbd213b5da6f50d6255b0a021564b3d5bd4`
 - Six challenge READMEs reviewed; eight author-supplied CWE labels transcribed.
 - The challenge binaries are synthetic DARPA Cyber Grand Challenge artifacts. No CVE is assigned to these synthetic challenge binaries. Historical CVE references in upstream READMEs are retained only as inspiration/context metadata.
 
@@ -30,4 +31,4 @@ Every record remains `training_status: quarantined_not_training_ready`. Independ
 
 - `rematch_cwe.jsonl` — six structured challenge summaries with upstream labels and separate MITRE catalogue metadata.
 - `rematch_labels.csv` — compact review index; upstream labels are preserved.
-- `rematch_manifest.json` — scope, source tree identity, counts, and validation state.
+- `rematch_manifest.json` — scope, immutable source commit/tree identity, counts, and validation state.
