@@ -408,7 +408,9 @@ class AgentRuntime:
         finally:
             close = getattr(iterator, "aclose", None)
             if close is not None:
-                await close()
+                close_result = close()
+                if inspect.isawaitable(close_result):
+                    await close_result
 
     def _should_compact(self, messages: Sequence[Mapping[str, Any]]) -> bool:
         return len(messages) >= self.compact_after_messages
