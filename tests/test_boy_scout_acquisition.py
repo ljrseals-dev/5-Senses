@@ -21,6 +21,8 @@ from body_of_secrets.scouting.models import (
     write_model_inventory,
 )
 from body_of_secrets.scouting.corpora import CorpusCandidate, write_corpus_inventory
+from body_of_secrets.scouting.integration import import_text_collection
+from body_of_secrets.archive import Archive
 
 
 def test_sha256_rejects_zero_or_non_integer_chunk_size(tmp_path: Path):
@@ -159,3 +161,46 @@ def test_corpus_inventory_never_overwrites_existing_file(tmp_path: Path):
     with pytest.raises(FileExistsError):
         write_corpus_inventory([CorpusCandidate("archive", "id-1")], path)
     assert path.read_text(encoding="utf-8") == "keep"
+
+
+def test_import_text_collection_records_stable_sha256_provenance(tmp_path: Path):
+    source = tmp_path / "incoming"
+    source.mkdir()
+    item = source / "record.txt"
+    item.write_bytes(b"source text")
+    with Archive(tmp_path / "archive.db") as archive:
+        report = import_text_collection(source, archive)
+        assert report["imported"] == [str(item.resolve())]
+        document = archive.list_documents()[0]
+        assert document.metadata["sha256"] == hashlib.sha256(b"source text").hexdigest()
+        assert document.metadata["size_bytes"] == len(b"source text")
+
+
+def test_import_text_collection_rejects_source_directory_symlink(tmp_path: Path):
+    source = tmp_path / "source"
+    source.mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(source, target_is_directory=True)
+    with Archive(tmp_path / "archive.db") as archive:
+        with pytest.raises(ValueError, match="source_dir must not be a symlink"):
+            import_text_collection(alias, archive)
+
+
+def test_import_text_collection_does_not_follow_file_symlinks(tmp_path: Path):
+    source = tmp_path / "source"
+    source.mkdir()
+    target = tmp_path / "outside.txt"
+    target.write_text("outside", encoding="utf-8")
+    (source / "linked.txt").symlink_to(target)
+    with Archive(tmp_path / "archive.db") as archive:
+        report = import_text_collection(source, archive)
+        assert report["failed"] == [str(source / "linked.txt")]
+        assert archive.count() == 0
+
+
+def test_import_text_collection_requires_positive_integer_limit(tmp_path: Path):
+    source = tmp_path / "source"
+    source.mkdir()
+    with Archive(tmp_path / "archive.db") as archive:
+        with pytest.raises(ValueError, match="positive integer"):
+            import_text_collection(source, archive, max_file_bytes=True)
