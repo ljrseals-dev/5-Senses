@@ -53,6 +53,8 @@ class MusicNGramModel(NGramModel):
     @classmethod
     def from_dict(cls,data):
         if not isinstance(data,dict) or data.get("schema")!=1: raise ValueError("unsupported music n-gram schema")
+        if not isinstance(data.get("vocab"),list) or any(not isinstance(token,str) for token in data["vocab"]):
+            raise ValueError("invalid music n-gram vocabulary")
         model=cls(int(data["order"])); model.vocab=set(data["vocab"])
         for item in data["counts"]:
             if not isinstance(item,dict) or not isinstance(item.get("context"),list) or not isinstance(item.get("next"),dict):
@@ -61,6 +63,8 @@ class MusicNGramModel(NGramModel):
                 raise ValueError("invalid music n-gram context")
             if any(not isinstance(t,str) or not isinstance(c,int) or c < 1 for t,c in item["next"].items()):
                 raise ValueError("invalid music n-gram counts")
+            if not set(item["next"]).issubset(model.vocab):
+                raise ValueError("n-gram targets are missing from vocabulary")
             key=tuple(item["context"]); model.counts[key].update(item["next"])
             model.context_totals[key]=sum(item["next"].values())
         model._trained=True
