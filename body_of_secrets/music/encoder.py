@@ -101,6 +101,22 @@ def _midi(path: Path) -> str:
 _ABC_NOTE = re.compile(r"([_^=]*)([A-Ga-g])([,']*)(\d*(?:/\d*)?)")
 _ABC_EVENT = re.compile(r"\[([^\]]+)\](\d*(?:/\d*)?)|([_^=]*)([A-Ga-g])([,']*)(\d*(?:/\d*)?)|([zx])(\d*(?:/\d*)?)")
 
+def _abc_multiplier(length: str) -> float:
+    if not length:
+        return 1.0
+    if "/" in length:
+        numerator, _, denominator = length.partition("/")
+        denominator_value = float(denominator) if denominator else 2.0
+        if denominator_value == 0:
+            raise ValueError("ABC note duration denominator must be non-zero")
+        multiplier = (float(numerator) if numerator else 1.0) / denominator_value
+    else:
+        multiplier = float(length)
+    if not math.isfinite(multiplier) or multiplier <= 0:
+        raise ValueError("ABC note duration must be finite and positive")
+    return multiplier
+
+
 def _abc(path: Path) -> str:
     text = path.read_text(encoding="utf-8-sig")
     unit = .5
@@ -135,18 +151,7 @@ def _abc(path: Path) -> str:
         if not 0 <= pitch <= 127:
             raise ValueError("ABC note pitch is outside MIDI range 0..127")
         length = duration_override or length
-        multiplier = 1.0
-        if length:
-            if "/" in length:
-                numerator, _, denominator = length.partition("/")
-                denominator_value = float(denominator) if denominator else 2.0
-                if denominator_value == 0:
-                    raise ValueError("ABC note duration denominator must be non-zero")
-                multiplier = (float(numerator) if numerator else 1.0) / denominator_value
-            else:
-                multiplier = float(length)
-            if not math.isfinite(multiplier) or multiplier <= 0:
-                raise ValueError("ABC note duration must be finite and positive")
+        multiplier = _abc_multiplier(length)
         if chord:
             tokens.append("CHD")
         tokens.extend((f"P{pitch:03d}", _duration(unit * multiplier)))
@@ -163,6 +168,7 @@ def _abc(path: Path) -> str:
         elif event.group(3) is not None:
             append_note(tokens, (event.group(3), event.group(4), event.group(5), event.group(6)))
         else:
+            _abc_multiplier(event.group(8))
             tokens.append("DRST")
     return " ".join(tokens)
 
