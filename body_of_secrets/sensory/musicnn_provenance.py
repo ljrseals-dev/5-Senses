@@ -88,7 +88,7 @@ def build_musicnn_provenance(
     tracked = checkpoint["batch_norm_num_batches_tracked"]
     if not isinstance(running, Mapping) or not isinstance(tracked, Mapping):
         raise RuntimeError("checkpoint dtype inventory is malformed")
-    if not running or any(dtype != "float32" for dtype in running.values()):
+    if len(running) != 22 or any(dtype != "float32" for dtype in running.values()):
         raise ValueError("checkpoint BatchNorm running statistics are not all FP32")
     if len(tracked) != 11 or any(dtype != "int64" for dtype in tracked.values()):
         raise ValueError("checkpoint BatchNorm tracking tensors are not 11 int64 values")
