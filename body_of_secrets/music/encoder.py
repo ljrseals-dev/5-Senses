@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .tokens import DURATION_BEATS
 
+
 def _duration(beats: float) -> str:
     return min(DURATION_BEATS, key=lambda key: (abs(DURATION_BEATS[key] - beats), -DURATION_BEATS[key]))
 
@@ -81,10 +82,9 @@ def _midi(path: Path) -> str:
             key = (channel, pitch)
             if kind == 144 and velocity:
                 active[key].append(tick)
-            elif kind == 128 or (kind == 144 and velocity == 0):
-                if active[key]:
-                    start = active[key].popleft()
-                    if tick > start: notes.append((start, tick, pitch))
+            elif (kind == 128 or (kind == 144 and velocity == 0)) and active[key]:
+                start = active[key].popleft()
+                if tick > start: notes.append((start, tick, pitch))
     grouped = defaultdict(list)
     for start, end, pitch in notes: grouped[start].append((pitch, end-start))
     tokens, previous_end = [], 0
