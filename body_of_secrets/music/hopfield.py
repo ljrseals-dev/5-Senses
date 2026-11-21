@@ -21,6 +21,7 @@ def project_motif(motif: tuple[str, ...], dimensions: int = 128) -> list[int]:
 class MotifMemory:
     def __init__(self, max_patterns=5000, dimensions=128):
         if max_patterns < 1: raise ValueError("max_patterns must be positive")
+        if not isinstance(dimensions,int) or dimensions < 8: raise ValueError("dimensions must be an integer >= 8")
         self.max_patterns, self.dimensions, self.patterns = max_patterns, dimensions, []
         self._network = None
     def build(self, lines, min_frequency=3):
@@ -56,8 +57,18 @@ class MotifMemory:
     @classmethod
     def from_dict(cls,data):
         if data.get("schema") != 1: raise ValueError("unsupported motif snapshot schema")
+        if not isinstance(data,dict) or not isinstance(data.get("patterns"),list):
+            raise ValueError("invalid motif snapshot")
         obj=cls(int(data["max_patterns"]),int(data["dimensions"])); obj.patterns=data["patterns"]
         if len(obj.patterns)>obj.max_patterns: raise ValueError("pattern capacity exceeded")
+        for pattern in obj.patterns:
+            if (not isinstance(pattern,dict) or not isinstance(pattern.get("tokens"),list)
+                or not isinstance(pattern.get("frequency"),int) or pattern["frequency"] < 1
+                or pattern.get("source") != "ngram_motif"
+                or not isinstance(pattern.get("vector"),list)
+                or len(pattern["vector"]) != obj.dimensions
+                or any(bit not in (-1,1) for bit in pattern["vector"])):
+                raise ValueError("invalid motif pattern")
         obj._network=obj.rebuild_network()
         return obj
     def save(self,path): Path(path).write_text(json.dumps(self.to_dict(),sort_keys=True,indent=2)+"\n",encoding="utf-8")
