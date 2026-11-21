@@ -256,18 +256,18 @@ def test_invalid_model_event_is_reported_as_backend_failure():
     assert any(e.kind == "error" for e in events)
 
 
-def test_duplicate_tool_call_ids_are_rejected_without_losing_order():
+def test_duplicate_tool_call_ids_fail_before_corrupting_tool_transcript():
+    called = []
     registry = ToolRegistry()
-    registry.register(ToolSpec("lookup", lambda args: "ok"))
+    registry.register(ToolSpec("lookup", lambda args: called.append(args)))
     backend = FakeBackend([[
         ModelEvent("tool_call", tool_call=ToolCall("same", "lookup", {})),
         ModelEvent("tool_call", tool_call=ToolCall("same", "lookup", {})),
-        ModelEvent("tool_call", tool_call=ToolCall("last", "missing", {})),
-    ], [ModelEvent("complete")]])
+    ]])
     events = asyncio.run(collect(AgentRuntime(backend, registry)))
-    results = [e for e in events if e.kind == "tool_result"]
-    assert [e.data["call_id"] for e in results] == ["same", "same", "last"]
-    assert [e.data["status"] for e in results] == ["OK", "REJECTED", "REJECTED"]
+    assert events[-1].data["status"] == "FAILED"
+    assert any("duplicate tool call IDs" in e.data.get("error", "") for e in events)
+    assert called == []
 
 
 
