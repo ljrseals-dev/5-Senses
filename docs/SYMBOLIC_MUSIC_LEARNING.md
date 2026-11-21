@@ -10,18 +10,18 @@ MIDI supports PPQ-based SMF format 0/1, note on/off, running status and same-ons
 
 ## Commands
 
-\`\`\`bash
+```bash
 body-of-secrets music encode ./midi --output music_data/corpus/symbolic_music.txt
 body-of-secrets music train ./midi --work-dir music_data --order 5
 body-of-secrets music predict --work-dir music_data --context "P060 D004 P064 D004"
 body-of-secrets music rollback v001 --work-dir music_data
-\`\`\`
+```
 
 Use --teacher-plugin PLUGIN_NAME with train to enable an installed plugin from Python entry-point group body_of_secrets.music_teachers. It must implement complete(prompt: str) -> str or be a zero-argument factory returning that interface. No provider SDK/network dependency is bundled. LoggedTeacher logs raw response, timestamp, prompt hash and errors to llm_responses.log; exception retries and timeouts are configurable. A timed-out call is not retried because the in-flight provider request cannot be cancelled safely; its daemon worker cannot hold up process shutdown.
 
 ## Provenance and snapshots
 
-Accepted lines carry source and SHA-256 comments; provenance.jsonl records timestamp, source, content hash and optional prompt hash. Rejected teacher samples go to rejected_samples.log. Snapshots contain n-gram model, motif patterns, exact corpus, SHA-256 manifest and parent metadata. Rollback verifies hashes before restoring the corpus and CURRENT pointer.
+Accepted lines carry source, timestamp, prompt hash and SHA-256 comments; provenance.jsonl records the same metadata. Seed imports are idempotent per source file while identical LLM samples are deduplicated against the whole corpus. Teacher continuations are stored together with their originating context so the n-gram learns the conditional transition. Rejected teacher samples go to rejected_samples.log. Snapshots contain n-gram model, motif patterns, exact corpus, SHA-256 manifest and parent metadata. Rollback verifies hashes before restoring the corpus and CURRENT pointer.
 
 The natural-language n-gram tokenizer is untouched; this music model preserves case and exact token boundaries. The teacher is not part of ordinary inference.
 
