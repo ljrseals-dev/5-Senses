@@ -392,26 +392,31 @@ class AgentRuntime:
             tools=self.tools.describe(),
         )
         iterator = stream.__aiter__()
-        while True:
-            try:
-                item = await asyncio.wait_for(
-                    iterator.__anext__(), timeout=self.model_idle_timeout_seconds
-                )
-            except StopAsyncIteration:
-                return
-            if not isinstance(item, ModelEvent):
-                raise TypeError("backend must yield ModelEvent instances")
-            yield item
-            if item.kind == "complete":
-                return
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(
+                        iterator.__anext__(), timeout=self.model_idle_timeout_seconds
+                    )
+                except StopAsyncIteration:
+                    return
+                if not isinstance(item, ModelEvent):
+                    raise TypeError("backend must yield ModelEvent instances")
+                yield item
+                if item.kind == "complete":
+                    return
+        finally:
+            close = getattr(iterator, "aclose", None)
+            if close is not None:
+                await close()
 
     def _should_compact(self, messages: Sequence[Mapping[str, Any]]) -> bool:
         return len(messages) >= self.compact_after_messages
 
     @staticmethod
     def _validate_compacted_messages(messages: Any) -> None:
-        if not isinstance(messages, list):
-            raise TypeError("context compactor must return a list of messages")
+        if not isinstance(messages, list) or not messages:
+            raise TypeError("context compactor must return a non-empty list of messages")
         for index, message in enumerate(messages):
             if not isinstance(message, dict):
                 raise TypeError(f"compacted message {index} must be a dictionary")
