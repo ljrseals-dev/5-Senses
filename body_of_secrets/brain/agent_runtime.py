@@ -38,10 +38,26 @@ class ToolSpec:
     validate_input: Callable[[JsonObject], None] | None = None
 
     def __post_init__(self) -> None:
-        if not self.name or not self.name.replace("_", "").replace("-", "").isalnum():
+        if not isinstance(self.name, str) or not self.name or not self.name.replace("_", "").replace("-", "").isalnum():
             raise ValueError("tool name must contain only letters, digits, '_' or '-'")
+        if not callable(self.handler):
+            raise TypeError("tool handler must be callable")
+        if not isinstance(self.description, str):
+            raise TypeError("tool description must be a string")
         if self.is_destructive and self.is_read_only:
             raise ValueError("a destructive tool cannot be declared read-only")
+        if self.is_concurrency_safe and not self.is_read_only:
+            raise ValueError("only read-only tools may be marked concurrency-safe")
+        if self.validate_input is not None and not callable(self.validate_input):
+            raise TypeError("validate_input must be callable")
+        if not self.is_read_only and not (
+            inspect.iscoroutinefunction(self.handler)
+            or inspect.iscoroutinefunction(getattr(self.handler, "__call__", None))
+        ):
+            raise TypeError(
+                "mutating tools must use async handlers; synchronous handlers cannot "
+                "be safely cancelled after a timeout"
+            )
 
 
 class ToolRegistry:
@@ -94,6 +110,10 @@ class ToolCall:
     name: str
     arguments: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.call_id, str) or not isinstance(self.name, str):
+            raise TypeError("tool call ID and name must be strings")
+
 
 @dataclass(frozen=True)
 class ModelEvent:
@@ -106,7 +126,9 @@ class ModelEvent:
     def __post_init__(self) -> None:
         if self.kind not in {"text", "tool_call", "complete"}:
             raise ValueError(f"unsupported model event kind: {self.kind}")
-        if self.kind == "tool_call" and self.tool_call is None:
+        if self.kind == "text" and not isinstance(self.text, str):
+            raise TypeError("text event content must be a string")
+        if self.kind == "tool_call" and not isinstance(self.tool_call, ToolCall):
             raise ValueError("tool_call event requires a ToolCall")
 
 
@@ -139,7 +161,7 @@ class AgentEvent:
 class StreamingBackend(Protocol):
     def stream(
         self,
-        messages: Sequence[Mapping[str, str]],
+        messages: Sequence[Mapping[str, Any]],
         *,
         static_prompt: str,
         dynamic_prompt: str,
@@ -147,7 +169,7 @@ class StreamingBackend(Protocol):
     ) -> AsyncIterator[ModelEvent]: ...
 
 
-ContextCompactor = Callable[[Sequence[Mapping[str, str]]], list[dict[str, str]]]
+ContextCompactor = Callable[[Sequence[Mapping[str, Any]]], list[dict[str, Any]]]
 
 
 class AgentRuntime:
@@ -190,8 +212,12 @@ class AgentRuntime:
         static_prompt: str = "",
         dynamic_prompt: str = "",
     ) -> AsyncIterator[AgentEvent]:
-        if not prompt.strip():
-            raise ValueError("prompt must not be empty")
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise ValueError("prompt must be a non-empty string")
+        if not isinstance(session_id, str) or not session_id.strip():
+            raise ValueError("session_id must be a non-empty string")
+        if not isinstance(static_prompt, str) or not isinstance(dynamic_prompt, str):
+            raise TypeError("prompt regions must be strings")
         state = AgentState(session_id=session_id)
         state.messages.append({"role": "user", "content": prompt})
         state.status = AgentStatus.RUNNING
@@ -202,30 +228,40 @@ class AgentRuntime:
             state.turn += 1
             state.status = AgentStatus.WAITING_FOR_MODEL
             state.transitions.append("RUNNING->WAITING_FOR_MODEL")
-            if self._should_compact(state.messages):
-                if self.compactor is not None:
-                    state.messages = self.compactor(state.messages)
-                    yield AgentEvent("context_compacted", state.turn, {
-                        "message_count": len(state.messages)
-                    })
-                else:
-                    state.messages = state.messages[-self.keep_recent_messages:]
-                    yield AgentEvent("context_trimmed", state.turn, {
-                        "message_count": len(state.messages),
-                        "reason": "no compactor configured; retained recent messages only",
-                    })
-
             text_parts: list[str] = []
             calls: list[ToolCall] = []
-            completed = False
             try:
+                if self._should_compact(state.messages):
+                    if self.compactor is not None:
+                        compacted = self.compactor(list(state.messages))
+                        self._validate_compacted_messages(compacted)
+                        state.messages = compacted
+                        yield AgentEvent("context_compacted", state.turn, {
+                            "message_count": len(state.messages)
+                        })
+                    else:
+                        first_user = next(
+                            (message for message in state.messages if message.get("role") == "user"),
+                            None,
+                        )
+                        recent = state.messages[-self.keep_recent_messages:]
+                        if first_user is not None and first_user not in recent:
+                            recent = [first_user, *recent[-(self.keep_recent_messages - 1):]]
+                        state.messages = recent
+                        yield AgentEvent("context_trimmed", state.turn, {
+                            "message_count": len(state.messages),
+                            "reason": "no compactor configured; retained initial user request and recent messages",
+                        })
+
                 for attempt in range(self.max_backend_retries + 1):
+                    received_event = False
                     try:
                         async for item in self._stream_turn(
                             state.messages,
                             static_prompt=static_prompt,
                             dynamic_prompt=dynamic_prompt,
                         ):
+                            received_event = True
                             if item.kind == "text":
                                 text_parts.append(item.text)
                                 yield AgentEvent("text", state.turn, {"text": item.text})
@@ -236,10 +272,12 @@ class AgentRuntime:
                                     "name": item.tool_call.name,
                                 })
                             elif item.kind == "complete":
-                                completed = True
+                                break
                         break
                     except (TimeoutError, OSError, ConnectionError) as exc:
-                        if attempt >= self.max_backend_retries:
+                        # Retrying after any emitted event would duplicate user-visible
+                        # text or tool calls. Only retry failures before the first event.
+                        if attempt >= self.max_backend_retries or received_event:
                             raise
                         yield AgentEvent("backend_retry", state.turn, {
                             "attempt": attempt + 1,
@@ -254,8 +292,26 @@ class AgentRuntime:
                 return
 
             assistant_text = "".join(text_parts)
-            if assistant_text:
-                state.messages.append({"role": "assistant", "content": assistant_text})
+            if assistant_text or calls:
+                assistant_message: dict[str, Any] = {
+                    "role": "assistant",
+                    "content": assistant_text,
+                }
+                if calls:
+                    assistant_message["tool_calls"] = [
+                        {
+                            "id": call.call_id,
+                            "type": "function",
+                            "function": {
+                                "name": call.name,
+                                "arguments": dict(call.arguments)
+                                if isinstance(call.arguments, Mapping)
+                                else call.arguments,
+                            },
+                        }
+                        for call in calls
+                    ]
+                state.messages.append(assistant_message)
             if not calls:
                 state.final_text = assistant_text
                 state.status = AgentStatus.COMPLETED
@@ -270,7 +326,9 @@ class AgentRuntime:
             for result in results:
                 state.messages.append({
                     "role": "tool",
-                    "content": f"{result.name} [{result.status}]: {result.output}",
+                    "tool_call_id": result.call_id,
+                    "name": result.name,
+                    "content": f"[{result.status}] {result.output}",
                 })
                 yield AgentEvent("tool_result", state.turn, {
                     "call_id": result.call_id,
@@ -288,7 +346,7 @@ class AgentRuntime:
 
     async def _stream_turn(
         self,
-        messages: Sequence[Mapping[str, str]],
+        messages: Sequence[Mapping[str, Any]],
         *,
         static_prompt: str,
         dynamic_prompt: str,
@@ -309,16 +367,40 @@ class AgentRuntime:
                 return
             yield item
 
-    def _should_compact(self, messages: Sequence[Mapping[str, str]]) -> bool:
+    def _should_compact(self, messages: Sequence[Mapping[str, Any]]) -> bool:
         return len(messages) >= self.compact_after_messages
+
+    @staticmethod
+    def _validate_compacted_messages(messages: Any) -> None:
+        if not isinstance(messages, list):
+            raise TypeError("context compactor must return a list of messages")
+        for index, message in enumerate(messages):
+            if not isinstance(message, dict):
+                raise TypeError(f"compacted message {index} must be a dictionary")
+            if not isinstance(message.get("role"), str):
+                raise TypeError(f"compacted message {index} requires a string role")
+            if not isinstance(message.get("content", ""), str):
+                raise TypeError(f"compacted message {index} content must be a string")
 
     async def _invoke(self, tool: ToolSpec, arguments: Mapping[str, Any]) -> ToolResult:
         try:
             if tool.validate_input is not None:
                 tool.validate_input(arguments)
-            value = tool.handler(arguments)
-            if inspect.isawaitable(value):
+            if inspect.iscoroutinefunction(tool.handler) or inspect.iscoroutinefunction(
+                getattr(tool.handler, "__call__", None)
+            ):
+                value = tool.handler(arguments)
                 value = await asyncio.wait_for(value, timeout=self.tool_timeout_seconds)
+            else:
+                # Synchronous read-only handlers run off-loop so they cannot stall
+                # model streaming or other sessions. A worker thread cannot be
+                # forcibly stopped, so only read-only sync tools are accepted.
+                value = await asyncio.wait_for(
+                    asyncio.to_thread(tool.handler, arguments),
+                    timeout=self.tool_timeout_seconds,
+                )
+                if inspect.isawaitable(value):
+                    value = await asyncio.wait_for(value, timeout=self.tool_timeout_seconds)
             output = str(value)
             return ToolResult("", tool.name, output, "OK")
         except asyncio.TimeoutError:
