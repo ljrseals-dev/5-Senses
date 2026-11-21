@@ -7,7 +7,7 @@ import pytest
 pytest.importorskip("librosa")
 pytest.importorskip("soundfile")
 
-from body_of_secrets.sensory.musicnn_frontend import (
+from body_of_secrets.sensory.musicnn_frontend import (  # noqa: E402
     DEFAULT_PREPROCESS_CONFIG,
     make_patches,
     preprocessing_record,
