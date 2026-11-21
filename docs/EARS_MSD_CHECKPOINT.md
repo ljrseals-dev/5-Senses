@@ -60,17 +60,17 @@ redistribution terms are documented. Record and verify its SHA-256 before use.
 
 - [x] Structural keys/shapes: 75/75, zero mismatches.
 - [x] Checkpoint BatchNorm dtype inspection: all running statistics FP32.
-- [x] Loader preserves FP32 BatchNorm state in FP32 and mixed-precision modes.
-- [x] Same-process deterministic inference test on a fixed synthetic input.
-- [x] Companion-code consistency check: the new loader strictly loaded the supplied checkpoint; both implementations exposed the same 75 state keys and produced max-absolute-logit difference 0.0 on the same fixed (1, 187, 96) FP32 input.
+- [ ] BatchNorm-preservation test executed (test authored; branch test suite not run).
+- [ ] Determinism test executed (test authored; branch test suite not run).
+- [x] Manual model consistency check: a local reconstruction of the branch model design strictly loaded the supplied checkpoint; both model implementations exposed the same 75 state keys and produced max-absolute-logit difference 0.0 on the same fixed (1, 187, 96) FP32 input. This is not an independent upstream reference.
 - [ ] Independent FP32 source checkpoint acquired and provenance verified.
 - [ ] Fixed-input FP32-source versus supplied-checkpoint logits comparison.
 - [ ] Maximum absolute logit difference recorded.
 - [ ] Upstream reference implementation parity test passed.
 
-The 0.0 companion-code difference is a consistency check against the
-companion implementation shipped in the same uploaded archive, not an
-independent upstream reference and not an FP32-versus-FP16 drift measurement.
+The 0.0 model consistency result is based on a local reconstruction compared
+with the companion implementation shipped in the same uploaded archive, not
+an independent upstream reference and not an FP32-versus-FP16 drift measurement.
 It does not close the numerical-equivalence gate.
 
 No numerical-equivalence claim is made. The supplied artifact contains FP16
