@@ -45,6 +45,32 @@ def test_manifest_rejects_path_traversal(tmp_path):
         load_fixture_manifest(path)
 
 
+def test_runner_refuses_fixture_bytes_that_do_not_match_manifest_pin(tmp_path):
+    if not shutil.which(COMPILER):
+        pytest.skip(f"{COMPILER} is not installed")
+    fixture_root = tmp_path / "fixture"
+    fixture_root.mkdir()
+    (fixture_root / "control.cpp").write_text("int main() { return 0; }\\n", encoding="utf-8")
+    manifest = {
+        "schema_version": 1,
+        "external_source_code_included": False,
+        "fixtures": [{
+            "id": "tampered.control.v1",
+            "path": "control.cpp",
+            "sha256": "0" * 64,
+            "standard": "c++11",
+            "expected": "CLEAN",
+            "sanitizers": ["address"],
+            "timeout_seconds": 5
+        }]
+    }
+    manifest_path = fixture_root / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(ValueError, match="SHA-256 does not match"):
+        run_fixture("tampered.control.v1", compiler_name=COMPILER,
+                    manifest_path=manifest_path)
+
+
 def test_unknown_fixture_id_is_rejected():
     if not shutil.which(COMPILER):
         pytest.skip("g++ is not installed")
