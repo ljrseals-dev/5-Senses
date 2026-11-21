@@ -25,6 +25,8 @@ class SnapshotStore:
     def __init__(self,root):
         self.root=Path(root); self.root.mkdir(parents=True,exist_ok=True); self.current_file=self.root/"CURRENT"
     def commit(self,model,memory,corpus_path,*,llm_samples=0):
+        if not isinstance(llm_samples,int) or isinstance(llm_samples,bool) or llm_samples < 0:
+            raise ValueError("llm_samples must be a non-negative integer")
         with _SNAPSHOT_LOCK:
             return self._commit(model,memory,corpus_path,llm_samples=llm_samples)
     def _commit(self,model,memory,corpus_path,*,llm_samples=0):
@@ -61,6 +63,10 @@ class SnapshotStore:
         metadata=json.loads((directory/"metadata.json").read_text(encoding="utf-8"))
         if not isinstance(metadata,dict) or metadata.get("schema")!=1 or metadata.get("version")!=version:
             raise ValueError("snapshot metadata mismatch")
+        if (not isinstance(metadata.get("corpus_lines"),int) or isinstance(metadata.get("corpus_lines"),bool)
+            or metadata["corpus_lines"] < 0 or not isinstance(metadata.get("llm_samples"),int)
+            or isinstance(metadata.get("llm_samples"),bool) or metadata["llm_samples"] < 0):
+            raise ValueError("invalid snapshot metadata counts")
         expected_files={"ngram_music.json","hopfield_patterns.json","corpus.txt","provenance.jsonl"}
         hashes=metadata.get("sha256")
         if not isinstance(hashes,dict) or set(hashes)!=expected_files:
@@ -69,6 +75,10 @@ class SnapshotStore:
             if not isinstance(expected,str) or len(expected)!=64 or sha256_file(directory/filename)!=expected: raise ValueError(f"snapshot integrity failure: {filename}")
         if (directory/"corpus_hash.txt").read_text(encoding="ascii").strip()!=metadata["sha256"]["corpus.txt"]:
             raise ValueError("snapshot corpus hash sidecar mismatch")
+        corpus_lines=sum(1 for line in (directory/"corpus.txt").read_text(encoding="utf-8").splitlines()
+                         if line.strip() and not line.lstrip().startswith("#"))
+        if corpus_lines != metadata["corpus_lines"]:
+            raise ValueError("snapshot corpus line count mismatch")
         return metadata
     def rollback(self,version,corpus_path):
         with _SNAPSHOT_LOCK:
