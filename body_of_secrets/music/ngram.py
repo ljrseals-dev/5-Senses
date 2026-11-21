@@ -40,7 +40,8 @@ class MusicNGramModel(NGramModel):
     def entropy(self,context):
         return -sum(p*math.log2(p) for p in self.distribution(context).values())
     def continuations(self,context,limit=5):
-        if limit<1: raise ValueError("limit must be positive")
+        if not isinstance(limit,int) or isinstance(limit,bool) or limit < 0:
+            raise ValueError("limit must be a non-negative integer")
         return sorted(self.distribution(context).items(),key=lambda x:(-x[1],x[0]))[:limit]
     def perplexity(self,lines):
         logp=0.0; count=0; fallback=1/max(1,len(self.vocab))
