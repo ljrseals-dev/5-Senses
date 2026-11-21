@@ -513,3 +513,45 @@ def test_async_input_validator_failure_prevents_tool_execution():
     result = next(event for event in events if event.kind == "tool_result")
     assert result.data["status"] == "ERROR"
     assert called == []
+
+
+
+def test_context_compactor_rejects_orphan_tool_results():
+    messages = [{"role": "tool", "tool_call_id": "missing", "name": "lookup", "content": "ok"}]
+    with pytest.raises(ValueError, match="orphan tool result"):
+        AgentRuntime._validate_compacted_messages(messages)
+
+
+def test_context_compactor_rejects_unanswered_tool_calls():
+    messages = [{
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [{
+            "id": "call-1",
+            "type": "function",
+            "function": {"name": "lookup", "arguments": {}},
+        }],
+    }]
+    with pytest.raises(ValueError, match="unanswered tool calls"):
+        AgentRuntime._validate_compacted_messages(messages)
+
+
+def test_context_compactor_accepts_correlated_tool_call_group():
+    messages = [
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [{
+                "id": "call-1",
+                "type": "function",
+                "function": {"name": "lookup", "arguments": {"query": "x"}},
+            }],
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call-1",
+            "name": "lookup",
+            "content": "[OK] found",
+        },
+    ]
+    AgentRuntime._validate_compacted_messages(messages)
