@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import json
 import math
 from dataclasses import dataclass, field
 from enum import Enum
@@ -48,6 +49,11 @@ class ToolSpec:
             raise TypeError("tool description must be a string")
         if not isinstance(self.input_schema, Mapping):
             raise TypeError("input_schema must be a mapping")
+        try:
+            schema_json = json.dumps(dict(self.input_schema))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("input_schema must contain only JSON-compatible values") from exc
+        object.__setattr__(self, "input_schema", json.loads(schema_json))
         if not all(isinstance(flag, bool) for flag in (
             self.is_read_only, self.is_concurrency_safe, self.is_destructive
         )):
@@ -92,7 +98,7 @@ class ToolRegistry:
             {
                 "name": item.name,
                 "description": item.description,
-                "input_schema": dict(item.input_schema),
+                "input_schema": json.loads(json.dumps(item.input_schema)),
                 "is_read_only": item.is_read_only,
                 "is_concurrency_safe": item.is_concurrency_safe,
                 "is_destructive": item.is_destructive,
