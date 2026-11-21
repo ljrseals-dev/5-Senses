@@ -558,6 +558,8 @@ class AgentRuntime:
     def _validate_compacted_messages(messages: Any) -> None:
         if not isinstance(messages, list) or not messages:
             raise TypeError("context compactor must return a non-empty list of messages")
+        pending_calls: set[str] = set()
+        seen_calls: set[str] = set()
         for index, message in enumerate(messages):
             if not isinstance(message, dict):
                 raise TypeError(f"compacted message {index} must be a dictionary")
@@ -565,6 +567,42 @@ class AgentRuntime:
                 raise TypeError(f"compacted message {index} requires a string role")
             if not isinstance(message.get("content", ""), str):
                 raise TypeError(f"compacted message {index} content must be a string")
+            try:
+                _validate_json_keys(message)
+                json.dumps(message, allow_nan=False)
+            except (TypeError, ValueError, RecursionError) as exc:
+                raise ValueError(
+                    f"compacted message {index} is not JSON-compatible"
+                ) from exc
+
+            if message["role"] == "assistant":
+                calls = message.get("tool_calls", [])
+                if not isinstance(calls, list):
+                    raise TypeError("assistant tool_calls must be a list")
+                for call in calls:
+                    if not isinstance(call, Mapping):
+                        raise TypeError("assistant tool call must be an object")
+                    call_id = call.get("id")
+                    function = call.get("function")
+                    if not isinstance(call_id, str) or not call_id.strip():
+                        raise ValueError("compacted tool call ID must be non-empty")
+                    if call_id in seen_calls:
+                        raise ValueError("compacted transcript contains duplicate tool call IDs")
+                    if not isinstance(function, Mapping) or not isinstance(
+                        function.get("name"), str
+                    ):
+                        raise ValueError("compacted tool call requires a named function")
+                    if not isinstance(function.get("arguments"), Mapping):
+                        raise ValueError("compacted tool call arguments must be an object")
+                    seen_calls.add(call_id)
+                    pending_calls.add(call_id)
+            elif message["role"] == "tool":
+                call_id = message.get("tool_call_id")
+                if not isinstance(call_id, str) or call_id not in pending_calls:
+                    raise ValueError("compacted transcript contains an orphan tool result")
+                pending_calls.remove(call_id)
+        if pending_calls:
+            raise ValueError("compacted transcript contains unanswered tool calls")
 
     async def _invoke(self, tool: ToolSpec, arguments: Mapping[str, Any]) -> ToolResult:
         try:
