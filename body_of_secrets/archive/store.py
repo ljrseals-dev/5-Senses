@@ -106,58 +106,60 @@ class Archive:
         doc_id: str | None = None,
     ) -> str:
         if not doc_id:
-            digest = hashlib.sha256(f"{source}:{title}:{content[:200]}".encode()).hexdigest()[:16]
+            identity = json.dumps([source, title, content], ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+            digest = hashlib.sha256(identity).hexdigest()
             doc_id = f"doc_{digest}"
 
         tags = tags or []
         metadata = metadata or {}
         now = time.time()
 
-        cur = self._conn.cursor()
-        cur.execute(
-            """
-            INSERT OR REPLACE INTO documents
-            (doc_id, title, content, source, tags, imported_at, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (doc_id, title, content, source, json.dumps(tags), now, json.dumps(metadata)),
-        )
-
-        # Remove old term stats for this doc
-        cur.execute("SELECT term, tf FROM doc_terms WHERE doc_id = ?", (doc_id,))
-        old = cur.fetchall()
-        for row in old:
-            cur.execute(
-                "UPDATE term_stats SET df = df - 1 WHERE term = ? AND df > 0",
-                (row["term"],),
-            )
-        cur.execute("DELETE FROM doc_terms WHERE doc_id = ?", (doc_id,))
-
-        # Index new terms
-        tokens = tokenize(content)
-        tf: dict[str, int] = {}
-        for t in tokens:
-            tf[t] = tf.get(t, 0) + 1
-
-        for term, count in tf.items():
-            cur.execute(
-                "INSERT INTO doc_terms (doc_id, term, tf) VALUES (?, ?, ?)",
-                (doc_id, term, count),
-            )
+        with self._conn:
+            cur = self._conn.cursor()
             cur.execute(
                 """
-                INSERT INTO term_stats (term, df) VALUES (?, 1)
-                ON CONFLICT(term) DO UPDATE SET df = df + 1
+                INSERT OR REPLACE INTO documents
+                (doc_id, title, content, source, tags, imported_at, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (term,),
+                (doc_id, title, content, source, json.dumps(tags), now, json.dumps(metadata)),
             )
-
-        self._conn.commit()
+    
+            # Remove old term stats for this doc
+            cur.execute("SELECT term, tf FROM doc_terms WHERE doc_id = ?", (doc_id,))
+            old = cur.fetchall()
+            for row in old:
+                cur.execute(
+                    "UPDATE term_stats SET df = df - 1 WHERE term = ? AND df > 0",
+                    (row["term"],),
+                )
+            cur.execute("DELETE FROM doc_terms WHERE doc_id = ?", (doc_id,))
+    
+            # Index new terms
+            tokens = tokenize(content)
+            tf: dict[str, int] = {}
+            for t in tokens:
+                tf[t] = tf.get(t, 0) + 1
+    
+            for term, count in tf.items():
+                cur.execute(
+                    "INSERT INTO doc_terms (doc_id, term, tf) VALUES (?, ?, ?)",
+                    (doc_id, term, count),
+                )
+                cur.execute(
+                    """
+                    INSERT INTO term_stats (term, df) VALUES (?, 1)
+                    ON CONFLICT(term) DO UPDATE SET df = df + 1
+                    """,
+                    (term,),
+                )
+    
+    
         return doc_id
 
     def import_text_file(self, path: str | Path, *, source: str | None = None) -> str:
         path = Path(path)
-        content = path.read_text(encoding="utf-8", errors="replace")
+        content = path.read_text(encoding="utf-8", errors="strict")
         return self.import_document(
             title=path.name,
             content=content,
@@ -210,6 +212,14 @@ class Archive:
     # ------------------------------------------------------------------
 
     def search(self, query: str, *, limit: int = 5, k1: float = 1.2, b: float = 0.75) -> list[SearchHit]:
+        if not isinstance(query, str):
+            raise TypeError("query must be a string")
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+            raise ValueError("limit must be a positive integer")
+        if isinstance(k1, bool) or not isinstance(k1, (int, float)) or not math.isfinite(k1) or k1 <= 0:
+            raise ValueError("k1 must be a positive finite number")
+        if isinstance(b, bool) or not isinstance(b, (int, float)) or not math.isfinite(b) or not 0 <= b <= 1:
+            raise ValueError("b must be a finite number between 0 and 1")
         query_terms = tokenize(query)
         if not query_terms:
             return []
