@@ -69,3 +69,41 @@ def test_cpp_expert_rules_emit_plausible_hypothesis_and_test(query, rule_name, e
     assert "[PLAUSIBLE]" in result.output
     assert "Distinguishing test:" in result.output
     assert expected.lower() in result.output.lower()
+
+
+
+@pytest.mark.parametrize(
+    ("evidence", "rule_name", "expected"),
+    [
+        (
+            '{"fixture_id":"cpp.thread.data-race.v1","outcome":"TSAN_FINDING","stderr":"WARNING: ThreadSanitizer: data race"}',
+            "cpp_tsan_finding_evidence",
+            "does not prove every access path",
+        ),
+        (
+            '{"fixture_id":"cpp.forwarding.incorrect-move.v1","outcome":"BEHAVIOR_REPRODUCED"}',
+            "cpp_forwarding_mismatch_evidence",
+            "std::move",
+        ),
+        (
+            '{"fixture_id":"cpp.forwarding.value-category-cxx17.v1","outcome":"CLEAN"}',
+            "cpp_forwarding_control_evidence",
+            "tested lvalue, rvalue, and const cases",
+        ),
+        (
+            '{"fixture_id":"cpp.thread.mutex-control.v1","outcome":"CLEAN"}',
+            "cpp_thread_control_evidence",
+            "does not establish race freedom",
+        ),
+    ],
+)
+def test_cpp_fixture_evidence_updates_hypotheses_without_verifying_root_cause(
+    evidence, rule_name, expected
+):
+    expert = build_default_expert()
+    result = next(item for item in expert.evaluate(evidence) if item.rule_name == rule_name)
+    assert result.matched
+    assert "[PLAUSIBLE]" in result.output
+    assert "[NOT_VERIFIED]" in result.output
+    assert expected.lower() in result.output.lower()
+    assert "[VERIFIED]" not in result.output

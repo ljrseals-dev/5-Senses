@@ -1,0 +1,35 @@
+name: C++ fixture verification
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cpp-fixtures:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Clang
+        if: matrix.compiler == 'clang++'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Run fixture and Archive integration tests
+        env:
+          CPP_FIXTURE_COMPILER: ${{ matrix.compiler }}
+        run: python -m pytest -q tests/test_cpp_harness.py
