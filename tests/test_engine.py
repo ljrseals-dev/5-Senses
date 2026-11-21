@@ -1,5 +1,9 @@
 """Integration tests for provider and execution-mode isolation."""
 
+from concurrent.futures import ThreadPoolExecutor
+import threading
+import time
+
 import pytest
 
 from body_of_secrets.brain import Engine
@@ -119,10 +123,6 @@ def test_default_provider_is_cached(monkeypatch):
 
 
 def test_concurrent_provider_discovery_is_single_flight(monkeypatch):
-    from concurrent.futures import ThreadPoolExecutor
-    import threading
-    import time
-
     calls = []
     calls_lock = threading.Lock()
     provider = CallableProvider(fake_complete)
