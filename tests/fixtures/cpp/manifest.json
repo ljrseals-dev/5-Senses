@@ -11,7 +11,12 @@
       "expected": "COMPILE_FAIL",
       "sanitizers": [],
       "timeout_seconds": 10,
-      "tags": ["ownership", "unique_ptr", "compile-diagnostic"]
+      "tags": [
+        "ownership",
+        "unique_ptr",
+        "compile-diagnostic"
+      ],
+      "sha256": "2fdac4d051d56a51ed7e4724130505c8163d07efb5daa082b2430693ac8751ce"
     },
     {
       "id": "cpp.link.pure-virtual-dtor.v1",
@@ -20,34 +25,60 @@
       "expected": "LINK_FAIL",
       "sanitizers": [],
       "timeout_seconds": 10,
-      "tags": ["lifetime", "virtual-destructor", "link-diagnostic"]
+      "tags": [
+        "lifetime",
+        "virtual-destructor",
+        "link-diagnostic"
+      ],
+      "sha256": "958b2526e4e70737f1f0f92797ddd7ca5474cac359771094274ea11f05b41fe4"
     },
     {
       "id": "cpp.asan.heap-use-after-free.v1",
       "path": "asan/heap_use_after_free.cpp",
       "standard": "c++11",
       "expected": "ASAN_FINDING",
-      "sanitizers": ["address"],
+      "sanitizers": [
+        "address"
+      ],
       "timeout_seconds": 10,
-      "tags": ["lifetime", "heap", "use-after-free"]
+      "tags": [
+        "lifetime",
+        "heap",
+        "use-after-free"
+      ],
+      "sha256": "99658174335bab38102ffe51dfa9cb3f4d67ddd80308f443a90502739754d0f0"
     },
     {
       "id": "cpp.ubsan.signed-overflow.v1",
       "path": "ubsan/signed_overflow.cpp",
       "standard": "c++11",
       "expected": "UBSAN_FINDING",
-      "sanitizers": ["undefined"],
+      "sanitizers": [
+        "undefined"
+      ],
       "timeout_seconds": 10,
-      "tags": ["undefined-behavior", "integer-overflow"]
+      "tags": [
+        "undefined-behavior",
+        "integer-overflow"
+      ],
+      "sha256": "5bde96da4499fbca5dec41ffd693f2cc2102172a1f365c1712e96a5535ff561b"
     },
     {
       "id": "cpp.clean.unique-ptr-transfer.v1",
       "path": "clean/unique_ptr_transfer.cpp",
       "standard": "c++11",
       "expected": "CLEAN",
-      "sanitizers": ["address", "undefined"],
+      "sanitizers": [
+        "address",
+        "undefined"
+      ],
       "timeout_seconds": 10,
-      "tags": ["ownership", "unique_ptr", "control"]
+      "tags": [
+        "ownership",
+        "unique_ptr",
+        "control"
+      ],
+      "sha256": "548d436f98d9de5778a6ddddf866464b89556ac9e146d061d0f23bcde3e3970c"
     }
   ]
 }
