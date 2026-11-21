@@ -1,7 +1,7 @@
 """Offline-first training and opt-in active teacher loop."""
 # ruff: noqa: E701, E702, E704
 from __future__ import annotations
-import hashlib,json
+import hashlib,json,math
 from datetime import datetime,timezone
 from pathlib import Path
 from .corpus import CorpusWriter
@@ -17,7 +17,8 @@ def _record_metrics(root,*,iteration,queries,rejected,hopfield_hits,lines,model,
     holdout_perplexity=None
     if holdout is not None:
         holdout_lines=Path(holdout).read_text(encoding="utf-8").splitlines()
-        holdout_perplexity=model.perplexity(holdout_lines)
+        value=model.perplexity(holdout_lines)
+        holdout_perplexity=value if math.isfinite(value) else None
     record={"timestamp":datetime.now(timezone.utc).isoformat(),"iteration":iteration,
             "status":status,"corpus_lines_total":sum(1 for line in lines
             if line.strip() and not line.lstrip().startswith("#")),
