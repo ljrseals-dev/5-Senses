@@ -1,8 +1,8 @@
 """Integration tests for provider and execution-mode isolation."""
 
-from concurrent.futures import ThreadPoolExecutor
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
