@@ -14,9 +14,11 @@ contract of `debug-cpp`.
 | `cpp.ubsan.signed-overflow.v1` | `UBSAN_FINDING` | Signed integer overflow |
 | `cpp.clean.unique-ptr-transfer.v1` | `CLEAN` | Valid move-based transfer of exclusive ownership; run separately under ASan and UBSan |
 
-The fixtures carry an MIT SPDX tag and an independent-origin marker. No source
-from the external BartVandewoestyne repositories is included. Their existing
-metadata-only records remain on `UNVERIFIED_HOLD`.
+The fixtures carry an MIT SPDX tag, an independent-origin marker, and a
+manifest-pinned SHA-256. The harness refuses to execute a fixture if its bytes
+do not match that pin. No source from the external BartVandewoestyne
+repositories is included. Their existing metadata-only records remain on
+`UNVERIFIED_HOLD`.
 
 ## Run one fixture
 
