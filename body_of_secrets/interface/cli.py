@@ -11,6 +11,7 @@ from body_of_secrets import __version__
 from body_of_secrets.archive import Archive
 from body_of_secrets.brain import Engine
 from body_of_secrets.cpp_debug import analyze_cpp_file, report_json
+from body_of_secrets.cpp_corpus import import_manifest, load_manifest
 from body_of_secrets.expert import build_default_expert
 from body_of_secrets.language import NGramModel
 from body_of_secrets.memory import Memory
@@ -184,6 +185,29 @@ def _cmd_debug_cpp(args: argparse.Namespace) -> int:
     return 0
 
 
+
+def _cmd_cpp_corpus(args: argparse.Namespace) -> int:
+    """Import metadata-only C++ corpus records; never fetch or copy source code."""
+    try:
+        manifest = load_manifest(args.manifest)
+        if args.dry_run:
+            print(f"Validated {len(manifest['records'])} metadata records from {len(manifest['sources'])} repositories.")
+            print("No Archive writes performed.")
+            return 0
+        with Archive(args.db) as archive:
+            imported = import_manifest(archive, args.manifest)
+            print(f"Imported or refreshed {len(imported)} metadata-only C++ reference records.")
+            print("Source code copied: no")
+            print("Rights status: UNVERIFIED_HOLD (all records)")
+            for doc_id in imported:
+                print(f"  {doc_id}")
+        return 0
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+        print(f"C++ corpus import failed: {exc}", file=sys.stderr)
+        return 2
+
+
+
 def _cmd_status(args: argparse.Namespace) -> int:
     archive = Archive(args.db)
     print(f"BODY OF SECRETS v{__version__}")
@@ -253,6 +277,11 @@ def main(argv: list[str] | None = None) -> int:
     p_cpp.add_argument("--description", default=None, help="Observed failure or diagnostic (not executed)")
     p_cpp.add_argument("--json", action="store_true")
     p_cpp.set_defaults(func=_cmd_debug_cpp)
+
+    p_corpus = sub.add_parser("cpp-corpus", help="Import metadata-only C++ reference corpus records")
+    p_corpus.add_argument("--manifest", default="data/cpp_reference_corpora.json")
+    p_corpus.add_argument("--dry-run", action="store_true", help="Validate and preview without Archive writes")
+    p_corpus.set_defaults(func=_cmd_cpp_corpus)
 
     p_st = sub.add_parser("status", help="Show system status")
     p_st.set_defaults(func=_cmd_status)
