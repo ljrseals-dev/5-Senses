@@ -41,7 +41,11 @@ class ToolSpec:
     input_schema: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not isinstance(self.name, str) or not self.name or not self.name.replace("_", "").replace("-", "").isalnum():
+        if (
+            not isinstance(self.name, str)
+            or not self.name
+            or not self.name.replace("_", "").replace("-", "").isalnum()
+        ):
             raise ValueError("tool name must contain only letters, digits, '_' or '-'")
         if not callable(self.handler):
             raise TypeError("tool handler must be callable")
@@ -50,7 +54,7 @@ class ToolSpec:
         if not isinstance(self.input_schema, Mapping):
             raise TypeError("input_schema must be a mapping")
         try:
-            schema_json = json.dumps(dict(self.input_schema))
+            schema_json = json.dumps(dict(self.input_schema), allow_nan=False)
         except (TypeError, ValueError) as exc:
             raise ValueError("input_schema must contain only JSON-compatible values") from exc
         object.__setattr__(self, "input_schema", json.loads(schema_json))
@@ -218,11 +222,23 @@ class AgentRuntime:
     ) -> None:
         if isinstance(max_turns, bool) or not isinstance(max_turns, int) or max_turns < 1:
             raise ValueError("max_turns must be a positive integer")
-        if isinstance(max_backend_retries, bool) or not isinstance(max_backend_retries, int) or max_backend_retries < 0:
+        if (
+            isinstance(max_backend_retries, bool)
+            or not isinstance(max_backend_retries, int)
+            or max_backend_retries < 0
+        ):
             raise ValueError("max_backend_retries must be a non-negative integer")
-        if isinstance(compact_after_messages, bool) or not isinstance(compact_after_messages, int) or compact_after_messages < 2:
+        if (
+            isinstance(compact_after_messages, bool)
+            or not isinstance(compact_after_messages, int)
+            or compact_after_messages < 2
+        ):
             raise ValueError("compact_after_messages must be an integer of at least 2")
-        if isinstance(keep_recent_messages, bool) or not isinstance(keep_recent_messages, int) or keep_recent_messages < 1:
+        if (
+            isinstance(keep_recent_messages, bool)
+            or not isinstance(keep_recent_messages, int)
+            or keep_recent_messages < 1
+        ):
             raise ValueError("keep_recent_messages must be a positive integer")
         if not all(
             isinstance(value, (int, float)) and not isinstance(value, bool)
@@ -285,20 +301,13 @@ class AgentRuntime:
                             "message_count": len(state.messages)
                         })
                     else:
-                        first_user = next(
-                            (message for message in state.messages if message.get("role") == "user"),
-                            None,
-                        )
-                        recent = state.messages[-self.keep_recent_messages:]
-                        if first_user is not None and first_user not in recent:
-                            tail_count = self.keep_recent_messages - 1
-                            recent = [first_user, *(
-                                state.messages[-tail_count:] if tail_count else []
-                            )]
-                        state.messages = recent
+                        state.messages = self._fallback_compact(state.messages)
                         yield AgentEvent("context_trimmed", state.turn, {
                             "message_count": len(state.messages),
-                            "reason": "no compactor configured; retained initial user request and recent messages",
+                            "reason": (
+                                "no compactor configured; retained initial user request, "
+                                "recent messages, and complete tool-call groups"
+                            ),
                         })
 
                 for attempt in range(self.max_backend_retries + 1):
@@ -433,6 +442,49 @@ class AgentRuntime:
                 close_result = close()
                 if inspect.isawaitable(close_result):
                     await close_result
+
+    def _fallback_compact(
+        self, messages: Sequence[Mapping[str, Any]]
+    ) -> list[dict[str, Any]]:
+        start = max(0, len(messages) - self.keep_recent_messages)
+        if start < len(messages) and messages[start].get("role") == "tool":
+            first_tool_id = messages[start].get("tool_call_id")
+            for index in range(start - 1, -1, -1):
+                message = messages[index]
+                if message.get("role") != "assistant":
+                    continue
+                declared_ids = {
+                    item.get("id")
+                    for item in message.get("tool_calls", [])
+                    if isinstance(item, Mapping)
+                }
+                if first_tool_id in declared_ids:
+                    start = index
+                    break
+
+        recent = [dict(message) for message in messages[start:]]
+        declared_ids = {
+            item.get("id")
+            for message in recent
+            if message.get("role") == "assistant"
+            for item in message.get("tool_calls", [])
+            if isinstance(item, Mapping)
+        }
+        recent = [
+            message for message in recent
+            if message.get("role") != "tool"
+            or message.get("tool_call_id") in declared_ids
+        ]
+        first_user = next(
+            (message for message in messages if message.get("role") == "user"),
+            None,
+        )
+        if first_user is not None and not any(
+            message.get("role") == "user" and message.get("content") == first_user.get("content")
+            for message in recent
+        ):
+            recent.insert(0, dict(first_user))
+        return recent
 
     def _should_compact(self, messages: Sequence[Mapping[str, Any]]) -> bool:
         return len(messages) >= self.compact_after_messages
