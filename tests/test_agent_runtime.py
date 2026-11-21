@@ -388,6 +388,8 @@ def test_tool_call_arguments_are_copied_and_json_validated():
     assert call.arguments == {"query": ["one", "two"]}
     with pytest.raises(ValueError, match="JSON-compatible"):
         ToolCall("call-2", "lookup", {"bad": object()})
+    with pytest.raises(ValueError, match="keys must be strings"):
+        ToolCall("call-3", "lookup", {1: "not a JSON object key"})
 
 
 
