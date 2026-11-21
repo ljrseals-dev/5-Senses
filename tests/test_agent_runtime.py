@@ -407,3 +407,56 @@ def test_unclassified_tool_is_denied_by_default():
     result = next(event for event in events if event.kind == "tool_result")
     assert result.data["status"] == "DENIED"
     assert called == []
+
+
+
+def test_model_response_size_is_bounded_per_turn():
+    backend = FakeBackend([[
+        ModelEvent("text", text="ab"),
+        ModelEvent("text", text="cd"),
+    ]])
+    events = asyncio.run(collect(AgentRuntime(
+        backend, max_response_chars_per_turn=3
+    )))
+    assert [e.data["text"] for e in events if e.kind == "text"] == ["ab"]
+    assert events[-1].data["status"] == "FAILED"
+    assert any("character limit" in e.data.get("error", "") for e in events)
+
+
+def test_tool_call_count_is_bounded_before_any_tool_runs():
+    called = []
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        "lookup", lambda args: called.append(args), is_read_only=True
+    ))
+    backend = FakeBackend([[
+        ModelEvent("tool_call", tool_call=ToolCall("one", "lookup", {})),
+        ModelEvent("tool_call", tool_call=ToolCall("two", "lookup", {})),
+    ]])
+    events = asyncio.run(collect(AgentRuntime(
+        backend, registry, max_tool_calls_per_turn=1
+    )))
+    assert events[-1].data["status"] == "FAILED"
+    assert called == []
+
+
+def test_tool_output_is_truncated_before_entering_context():
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        "lookup", lambda args: "abcdefghij", is_read_only=True
+    ))
+    backend = FakeBackend([
+        [ModelEvent("tool_call", tool_call=ToolCall("one", "lookup", {}))],
+        [ModelEvent("complete")],
+    ])
+    events = asyncio.run(collect(AgentRuntime(
+        backend, registry, max_tool_output_chars=5
+    )))
+    result = next(event for event in events if event.kind == "tool_result")
+    assert result.data["output"] == "abcde\n...[truncated]"
+
+
+def test_invalid_payload_limits_are_rejected():
+    backend = FakeBackend([])
+    with pytest.raises(ValueError, match="max_tool_calls_per_turn"):
+        AgentRuntime(backend, max_tool_calls_per_turn=0)
