@@ -110,6 +110,13 @@ def _abc(path: Path) -> str:
     body = re.sub(r'"[^"]*"|![^!]*!|%.*', " ", body)
     semitones = dict(zip("CDEFGAB", (0, 2, 4, 5, 7, 9, 11)))
 
+    def note_sort_key(note):
+        accidental, letter, marks, _ = note
+        octave = (5 if letter.islower() else 4) + marks.count("\\'") - marks.count(",")
+        pitch = 60 + (octave - 4) * 12 + semitones[letter.upper()]
+        pitch += accidental.count("^") - accidental.count("_")
+        return pitch
+
     def append_note(tokens, note, duration_override="", chord=False):
         accidental, letter, marks, length = note
         octave = (5 if letter.islower() else 4) + marks.count("'") - marks.count(",")
@@ -139,7 +146,7 @@ def _abc(path: Path) -> str:
         if event.group(1) is not None:
             notes = _ABC_NOTE.findall(event.group(1))
             if len(notes) > 1:
-                for note in notes:
+                for note in sorted(notes, key=note_sort_key):
                     append_note(tokens, note, event.group(2), chord=True)
             elif notes:
                 append_note(tokens, notes[0], event.group(2))
