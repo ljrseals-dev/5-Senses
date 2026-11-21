@@ -566,3 +566,26 @@ def test_tool_call_ids_cannot_be_reused_across_turns():
     events = asyncio.run(collect(AgentRuntime(backend, max_turns=3)))
     assert events[-1].data["status"] == "FAILED"
     assert any("duplicate or reused" in e.data.get("error", "") for e in events)
+
+
+
+def test_context_compactor_rejects_mismatched_tool_result_name():
+    messages = [
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [{
+                "id": "call-1",
+                "type": "function",
+                "function": {"name": "lookup", "arguments": {}},
+            }],
+        },
+        {
+            "role": "tool",
+            "tool_call_id": "call-1",
+            "name": "delete_file",
+            "content": "[OK] done",
+        },
+    ]
+    with pytest.raises(ValueError, match="name does not match"):
+        AgentRuntime._validate_compacted_messages(messages)
