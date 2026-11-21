@@ -36,15 +36,26 @@ def _thaw_json(value: Any) -> Any:
     return value
 
 
-def _validate_json_keys(value: Any) -> None:
-    if isinstance(value, Mapping):
-        for key, item in value.items():
-            if not isinstance(key, str):
-                raise ValueError("JSON object keys must be strings")
-            _validate_json_keys(item)
-    elif isinstance(value, (list, tuple)):
-        for item in value:
-            _validate_json_keys(item)
+def _validate_json_keys(value: Any, active: set[int] | None = None) -> None:
+    if active is None:
+        active = set()
+    if not isinstance(value, (Mapping, list, tuple)):
+        return
+    identity = id(value)
+    if identity in active:
+        raise ValueError("cyclic values are not valid JSON")
+    active.add(identity)
+    try:
+        if isinstance(value, Mapping):
+            for key, item in value.items():
+                if not isinstance(key, str):
+                    raise ValueError("JSON object keys must be strings")
+                _validate_json_keys(item, active)
+        else:
+            for item in value:
+                _validate_json_keys(item, active)
+    finally:
+        active.remove(identity)
 
 
 class AgentStatus(str, Enum):
@@ -84,7 +95,7 @@ class ToolSpec:
         try:
             _validate_json_keys(self.input_schema)
             schema_json = json.dumps(dict(self.input_schema), allow_nan=False)
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, RecursionError) as exc:
             raise ValueError("input_schema must contain only JSON-compatible values") from exc
         object.__setattr__(self, "input_schema", _freeze_json(json.loads(schema_json)))
         if not all(isinstance(flag, bool) for flag in (
@@ -176,7 +187,7 @@ class ToolCall:
         try:
             _validate_json_keys(self.arguments)
             arguments_json = json.dumps(dict(self.arguments), allow_nan=False)
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, RecursionError) as exc:
             raise ValueError("tool call arguments must contain only JSON-compatible values") from exc
         object.__setattr__(self, "arguments", json.loads(arguments_json))
 
