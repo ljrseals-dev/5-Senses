@@ -7,7 +7,8 @@ from body_of_secrets.archive import Archive
 from body_of_secrets.cpp_corpus import import_manifest, load_manifest
 from body_of_secrets.expert import build_default_expert
 
-MANIFEST = "data/cpp_reference_corpora.json"\nrevisions = {"bart-cpp": "376ae463ee95ee5723e74322b7fa25a59e972ac9"}
+MANIFEST = "data/cpp_reference_corpora.json"
+revisions = {"bart-cpp": "376ae463ee95ee5723e74322b7fa25a59e972ac9"}
 
 
 def test_manifest_is_metadata_only_and_rights_held():
