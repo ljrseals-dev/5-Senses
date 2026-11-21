@@ -15,7 +15,7 @@ class ValidationResult:
     violations:tuple[str,...]=()
     tokens:tuple[str,...]=()
 def validate_tokens(value,*,min_tokens=4,max_tokens=64,max_interval=12,
-                    key_pitch_classes:set[int]|None=None,max_events_per_four_beats=16):
+                    key_pitch_classes:set[int]|frozenset[int]|None=None,max_events_per_four_beats=16):
     try:
         tokens=parse_tokens(value)
     except (TypeError,ValueError) as exc:
