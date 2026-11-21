@@ -7,6 +7,7 @@ from .hopfield import MotifMemory
 from .ngram import MusicNGramModel
 from .tokens import validate_tokens
 
+
 @dataclass(frozen=True)
 class UncertaintyVerdict:
     is_uncertain: bool
