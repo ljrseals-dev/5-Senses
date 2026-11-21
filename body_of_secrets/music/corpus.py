@@ -1,11 +1,15 @@
 """Idempotent corpus writer with source-aware deduplication and provenance."""
-# ruff: noqa: E401, E701, E702, E704
 from __future__ import annotations
-import hashlib,json,threading
-from datetime import datetime,timezone
+
+import hashlib
+import json
+import threading
+from datetime import datetime, timezone
 from pathlib import Path
+
 from .tokens import strip_comments
-_LOCK=threading.Lock()
+
+_LOCK = threading.Lock()
 
 class CorpusWriter:
     def __init__(self,corpus_path,rejected_path=None):
