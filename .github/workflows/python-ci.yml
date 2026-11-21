@@ -38,3 +38,5 @@ jobs:
         run: python -m pytest -q
       - name: Lint changed Python areas
         run: ruff check body_of_secrets/music body_of_secrets/language/ngram.py body_of_secrets/interface/cli.py tests/test_music.py
+      - name: Type-check music implementation
+        run: mypy --disable-error-code no-untyped-def --follow-imports=silent body_of_secrets/music body_of_secrets/language/ngram.py
