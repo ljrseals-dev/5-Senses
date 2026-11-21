@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "origin": "BODY-OF-SECRETS independently authored fixtures",
+  "license": "MIT",
+  "external_source_code_included": false,
+  "fixtures": [
+    {
+      "id": "cpp.compile.unique-ptr-copy.v1",
+      "path": "compile_fail/unique_ptr_copy.cpp",
+      "standard": "c++11",
+      "expected": "COMPILE_FAIL",
+      "sanitizers": [],
+      "timeout_seconds": 10,
+      "tags": ["ownership", "unique_ptr", "compile-diagnostic"]
+    },
+    {
+      "id": "cpp.link.pure-virtual-dtor.v1",
+      "path": "link_fail/missing_pure_virtual_dtor.cpp",
+      "standard": "c++98",
+      "expected": "LINK_FAIL",
+      "sanitizers": [],
+      "timeout_seconds": 10,
+      "tags": ["lifetime", "virtual-destructor", "link-diagnostic"]
+    },
+    {
+      "id": "cpp.asan.heap-use-after-free.v1",
+      "path": "asan/heap_use_after_free.cpp",
+      "standard": "c++11",
+      "expected": "ASAN_FINDING",
+      "sanitizers": ["address"],
+      "timeout_seconds": 10,
+      "tags": ["lifetime", "heap", "use-after-free"]
+    },
+    {
+      "id": "cpp.ubsan.signed-overflow.v1",
+      "path": "ubsan/signed_overflow.cpp",
+      "standard": "c++11",
+      "expected": "UBSAN_FINDING",
+      "sanitizers": ["undefined"],
+      "timeout_seconds": 10,
+      "tags": ["undefined-behavior", "integer-overflow"]
+    },
+    {
+      "id": "cpp.clean.unique-ptr-transfer.v1",
+      "path": "clean/unique_ptr_transfer.cpp",
+      "standard": "c++11",
+      "expected": "CLEAN",
+      "sanitizers": ["address", "undefined"],
+      "timeout_seconds": 10,
+      "tags": ["ownership", "unique_ptr", "control"]
+    }
+  ]
+}
