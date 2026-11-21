@@ -9,6 +9,8 @@ from .tokens import strip_comments
 class MusicNGramModel(NGramModel):
     """Use the repository's existing n-gram counts with case-sensitive tokenization."""
     def __init__(self,order:int=5):
+        if not isinstance(order,int) or isinstance(order,bool) or order < 1:
+            raise ValueError("order must be a positive integer")
         super().__init__(n=order,level="token")
     def train_lines(self,lines):
         for line in lines:
@@ -56,6 +58,8 @@ class MusicNGramModel(NGramModel):
         if not isinstance(data.get("vocab"),list) or any(not isinstance(token,str) for token in data["vocab"]):
             raise ValueError("invalid music n-gram vocabulary")
         model=cls(int(data["order"])); model.vocab=set(data["vocab"])
+        if not isinstance(data.get("counts"),list):
+            raise ValueError("invalid music n-gram counts")
         for item in data["counts"]:
             if not isinstance(item,dict) or not isinstance(item.get("context"),list) or not isinstance(item.get("next"),dict):
                 raise ValueError("invalid music n-gram count entry")
