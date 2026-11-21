@@ -14,7 +14,9 @@ It does not contain or reproduce Claude Code source code.
   vendor, make network calls, or require an LLM.
 - Tools are explicit allow-listed capabilities. There is no shell tool,
   arbitrary Python execution, or implicit filesystem access.
-- Read-only tools are permitted by default. Mutating tools require an explicit
+- Tools default to unclassified/mutating (`is_read_only=False`) and are denied
+  by the default policy. Authors must explicitly mark a capability read-only
+  before the default policy permits it. Mutating tools require an explicit
   `PermissionPolicy(allow_mutating=True)`; destructive tools additionally
   require `allow_destructive=True`.
 - Each tool may publish a JSON-compatible `input_schema` to the backend.
