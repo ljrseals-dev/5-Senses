@@ -15,7 +15,13 @@ class ValidationResult:
     tokens:tuple[str,...]=()
 def validate_tokens(value,*,min_tokens=4,max_tokens=64,max_interval=12,
                     key_pitch_classes:set[int]|None=None,max_events_per_four_beats=16):
-    tokens=parse_tokens(value); errors=[]
+    try:
+        tokens=parse_tokens(value)
+    except (TypeError,ValueError) as exc:
+        raise ValueError("tokens must be a string or iterable of strings") from exc
+    if any(not isinstance(token,str) for token in tokens):
+        raise ValueError("tokens must contain only strings")
+    errors=[]
     if not isinstance(max_interval,int) or max_interval < 0:
         raise ValueError("max_interval must be a non-negative integer")
     if min_tokens < 0 or max_tokens < min_tokens:
