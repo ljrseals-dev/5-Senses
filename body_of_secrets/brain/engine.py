@@ -47,18 +47,33 @@ class Engine:
         self.archive = archive
         self.expert = expert or build_default_expert()
         self._provider = provider
+        self._provider_resolved = provider is not None
         self.require_llm = require_llm
 
     @property
     def provider(self) -> LLMProvider | None:
+        """Resolve an optional provider once, without breaking offline operation.
+
+        Missing credentials or an uninstalled optional SDK are equivalent to no
+        provider when ``require_llm`` is false. When it is true, the original
+        configuration/import error is surfaced to the caller.
+        """
         if self._provider is not None:
             return self._provider
-        if self.require_llm:
-            return default_provider()
-        try:
-            return default_provider()
-        except RuntimeError:
+        if self._provider_resolved:
             return None
+
+        try:
+            provider = default_provider()
+        except (RuntimeError, ImportError):
+            if self.require_llm:
+                raise
+            self._provider_resolved = True
+            return None
+
+        self._provider = provider
+        self._provider_resolved = True
+        return self._provider
 
     def ask(
         self,
