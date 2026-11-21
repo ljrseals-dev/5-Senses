@@ -106,7 +106,13 @@ class Archive:
         doc_id: str | None = None,
     ) -> str:
         if not doc_id:
-            digest = hashlib.sha256(f"{source}:{title}:{content[:200]}".encode()).hexdigest()[:16]
+            # Hash the complete, unambiguously separated identity fields.
+            # Prefix-only hashing could silently overwrite distinct documents
+            # that share their first 200 characters.
+            identity = json.dumps(
+                [source, title, content], ensure_ascii=False, separators=(",", ":")
+            ).encode("utf-8")
+            digest = hashlib.sha256(identity).hexdigest()[:16]
             doc_id = f"doc_{digest}"
 
         tags = tags or []
