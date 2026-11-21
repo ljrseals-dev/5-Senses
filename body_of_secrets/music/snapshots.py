@@ -17,7 +17,8 @@ class SnapshotStore:
     def __init__(self,root):
         self.root=Path(root); self.root.mkdir(parents=True,exist_ok=True); self.current_file=self.root/"CURRENT"
     def commit(self,model,memory,corpus_path,*,llm_samples=0):
-        versions=sorted(p.name for p in self.root.glob("v[0-9][0-9][0-9]") if p.is_dir())
+        versions=sorted((p.name for p in self.root.glob("v[0-9]*")
+                         if p.is_dir() and p.name[1:].isdigit()), key=lambda value:int(value[1:]))
         name=f"v{(int(versions[-1][1:])+1) if versions else 1:03d}"
         parent=self.current_file.read_text(encoding="ascii").strip() if self.current_file.exists() else (versions[-1] if versions else None)
         if parent: self.verify(parent)
@@ -25,7 +26,10 @@ class SnapshotStore:
         try:
             model.save(temp/"ngram_music.json"); memory.save(temp/"hopfield_patterns.json")
             shutil.copyfile(corpus_path,temp/"corpus.txt")
-            files=("ngram_music.json","hopfield_patterns.json","corpus.txt")
+            provenance=Path(corpus_path).with_name("provenance.jsonl")
+            if provenance.exists(): shutil.copyfile(provenance,temp/"provenance.jsonl")
+            else: (temp/"provenance.jsonl").write_text("",encoding="utf-8")
+            files=("ngram_music.json","hopfield_patterns.json","corpus.txt","provenance.jsonl")
             hashes={f:sha256_file(temp/f) for f in files}
             (temp/"corpus_hash.txt").write_text(hashes["corpus.txt"]+"\n",encoding="ascii")
             corpus_lines=sum(1 for x in (temp/"corpus.txt").read_text(encoding="utf-8").splitlines()
@@ -45,7 +49,7 @@ class SnapshotStore:
         directory=self.root/version
         metadata=json.loads((directory/"metadata.json").read_text(encoding="utf-8"))
         if metadata.get("schema")!=1 or metadata.get("version")!=version: raise ValueError("snapshot metadata mismatch")
-        expected_files={"ngram_music.json","hopfield_patterns.json","corpus.txt"}
+        expected_files={"ngram_music.json","hopfield_patterns.json","corpus.txt","provenance.jsonl"}
         if set(metadata.get("sha256",{}))!=expected_files: raise ValueError("snapshot file manifest mismatch")
         for filename,expected in metadata["sha256"].items():
             if sha256_file(directory/filename)!=expected: raise ValueError(f"snapshot integrity failure: {filename}")
@@ -56,6 +60,10 @@ class SnapshotStore:
         self.verify(version); target=Path(corpus_path); target.parent.mkdir(parents=True,exist_ok=True)
         temp=target.with_name(target.name+".rollback.tmp")
         shutil.copyfile(self.root/version/"corpus.txt",temp); os.replace(temp,target)
+        manifest_target=target.with_name("provenance.jsonl")
+        manifest_temp=manifest_target.with_name(manifest_target.name+".rollback.tmp")
+        shutil.copyfile(self.root/version/"provenance.jsonl",manifest_temp)
+        os.replace(manifest_temp,manifest_target)
         pointer=self.root/".CURRENT.tmp"; pointer.write_text(version+"\n",encoding="ascii")
         os.replace(pointer,self.current_file)
     def load(self,version=None):
