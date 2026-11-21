@@ -251,14 +251,15 @@ def run_fixture(fixture_id: str, *, compiler_name: str = "g++",
     if fixture_root not in source.parents or not source.is_file():
         raise ValueError(f"{fixture_id}: source path is missing or escapes fixture root")
 
-    version_result = _run([compiler, "--version"], cwd=fixture_root,
-                          timeout=min(fixture["timeout_seconds"], 10))
-    if version_result["timed_out"] or version_result["returncode"] != 0:
-        raise RuntimeError("compiler version probe failed")
-    version = (version_result["stdout"] or version_result["stderr"]).splitlines()[0]
+    # Reject modified fixture bytes before invoking any compiler process.
     source_hash = sha256_file(source)
     if source_hash != fixture["sha256"]:
         raise ValueError(f"{fixture_id}: source SHA-256 does not match the manifest pin")
+
+    version_result = _run([compiler, "--version"], cwd=fixture_root, timeout=10)
+    if version_result["timed_out"] or version_result["returncode"] != 0:
+        raise RuntimeError("compiler version probe failed")
+    version = (version_result["stdout"] or version_result["stderr"]).splitlines()[0]
     sanitizer_names: list[str | None] = fixture["sanitizers"] or [None]
     runs: list[dict[str, Any]] = []
 
