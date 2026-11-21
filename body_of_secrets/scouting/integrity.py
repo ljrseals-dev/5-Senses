@@ -6,8 +6,8 @@ import json
 import os
 import re
 import stat
-from pathlib import Path, PurePosixPath
 from collections.abc import Iterable
+from pathlib import Path, PurePosixPath
 
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -23,10 +23,7 @@ def _hash_stable_file(path: Path, *, chunk_size: int = 1024 * 1024) -> tuple[str
     if path.is_symlink():
         raise ValueError(f"refusing symlink file: {path}")
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0)
-    try:
-        fd = os.open(path, flags)
-    except OSError:
-        raise
+    fd = os.open(path, flags)
     with os.fdopen(fd, "rb") as stream:
         before = os.fstat(stream.fileno())
         if not stat.S_ISREG(before.st_mode):
@@ -108,7 +105,7 @@ def verify_manifest(manifest_path: str | Path, root: str | Path) -> list[dict[st
         raise ValueError("unsupported manifest schema or digest algorithm")
     entries = manifest.get("files")
     if not isinstance(entries, list):
-        raise ValueError("manifest files must be a list")
+        raise TypeError("manifest files must be a list")
     raw_root = Path(root)
     if raw_root.is_symlink():
         raise ValueError("verification root must not be a symlink")
@@ -119,7 +116,7 @@ def verify_manifest(manifest_path: str | Path, root: str | Path) -> list[dict[st
     seen: set[str] = set()
     for index, entry in enumerate(entries):
         if not isinstance(entry, dict):
-            raise ValueError(f"manifest entry {index} must be an object")
+            raise TypeError(f"manifest entry {index} must be an object")
         name, size, expected = entry.get("path"), entry.get("size_bytes"), entry.get("sha256")
         if not isinstance(name, str) or not name or "\x00" in name or "\\" in name:
             raise ValueError(f"manifest entry {index} has an invalid path")
