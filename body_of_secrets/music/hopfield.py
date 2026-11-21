@@ -1,5 +1,5 @@
 """Deterministic motif vectors and bounded Hopfield-compatible memory."""
-# ruff: noqa: E701, E702, E704
+# ruff: noqa: E401, E701, E702, E704
 from __future__ import annotations
 import hashlib, json
 from collections import Counter
