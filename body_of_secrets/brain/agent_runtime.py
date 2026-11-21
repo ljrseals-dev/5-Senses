@@ -419,8 +419,15 @@ class AgentRuntime:
 
             assistant_text = "".join(text_parts)
             call_ids = [call.call_id for call in calls]
-            if len(call_ids) != len(set(call_ids)):
-                state.last_error = "backend returned duplicate tool call IDs"
+            prior_call_ids = {
+                call.get("id")
+                for message in state.messages
+                if message.get("role") == "assistant"
+                for call in message.get("tool_calls", [])
+                if isinstance(call, Mapping)
+            }
+            if len(call_ids) != len(set(call_ids)) or prior_call_ids.intersection(call_ids):
+                state.last_error = "backend returned duplicate or reused tool call IDs"
                 state.status = AgentStatus.FAILED
                 state.transitions.append("WAITING_FOR_MODEL->FAILED")
                 yield AgentEvent("error", state.turn, {"error": state.last_error})
