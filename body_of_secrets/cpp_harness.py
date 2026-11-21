@@ -266,6 +266,7 @@ def run_fixture(fixture_id: str, *, compiler_name: str = "g++",
     if version_result["timed_out"] or version_result["returncode"] != 0:
         raise RuntimeError("compiler version probe failed")
     version = (version_result["stdout"] or version_result["stderr"]).splitlines()[0]
+    expected = fixture["expected"]
     sanitizer_names: list[str | None] = fixture["sanitizers"] or [None]
     runs: list[dict[str, Any]] = []
 
@@ -296,7 +297,6 @@ def run_fixture(fixture_id: str, *, compiler_name: str = "g++",
             run["sanitizer"] = sanitizer
             runs.append(run)
 
-    expected = fixture["expected"]
     expected_for_run = expected
     if expected == "CLEAN":
         expected_for_run = "CLEAN"
