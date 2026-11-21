@@ -156,8 +156,10 @@ def _abc(path: Path) -> str:
                     append_note(tokens, note, event.group(2), chord=True)
             elif notes:
                 append_note(tokens, notes[0], event.group(2))
-        else:
+        elif event.group(3) is not None:
             append_note(tokens, (event.group(3), event.group(4), event.group(5), event.group(6)))
+        else:
+            tokens.append("DRST")
     return " ".join(tokens)
 
 def encode_file(path: str | Path) -> str:
