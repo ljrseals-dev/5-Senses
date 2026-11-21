@@ -191,7 +191,7 @@ def encode_directory(directory: str | Path, output: str | Path | None = None) ->
         if tokens: records.append({"source": path.relative_to(root).as_posix(), "tokens": tokens})
     if output is not None:
         target = Path(output); target.parent.mkdir(parents=True, exist_ok=True)
-        lines = []
+        lines: list[str] = []
         for item in records:
             lines.extend((f"# SRC {item['source']}", f"{item['tokens']} # src=file:{item['source']}"))
         target.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
