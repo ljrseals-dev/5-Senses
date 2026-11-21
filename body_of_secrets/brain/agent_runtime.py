@@ -33,11 +33,11 @@ class ToolSpec:
     name: str
     handler: ToolHandler
     description: str = ""
-    input_schema: Mapping[str, Any] = field(default_factory=dict)
     is_read_only: bool = True
     is_concurrency_safe: bool = False
     is_destructive: bool = False
     validate_input: Callable[[JsonObject], None] | None = None
+    input_schema: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name or not self.name.replace("_", "").replace("-", "").isalnum():
