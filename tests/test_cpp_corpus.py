@@ -1,5 +1,6 @@
 """Tests for metadata-only C++ corpus ingestion and Expert hypotheses."""
 import json
+from pathlib import Path
 
 import pytest
 
@@ -15,12 +16,14 @@ def test_manifest_is_metadata_only_and_rights_held():
     manifest = load_manifest(MANIFEST)
     assert manifest["contains_source_code"] is False
     assert len(manifest["sources"]) == 2
+    assert all(source["revision_status"] == "PINNED" for source in manifest["sources"])
+    assert all(source["revision"] for source in manifest["sources"])
     assert all(item["rights_status"] == "UNVERIFIED_HOLD" for item in manifest["records"])
     assert all(item["source_path"] is None for item in manifest["records"])
 
 
 def test_manifest_rejects_embedded_source_code(tmp_path):
-    payload = json.loads(open(MANIFEST, encoding="utf-8").read())
+    payload = json.loads(Path(MANIFEST).read_text(encoding="utf-8"))
     payload["records"][0]["source_code"] = "int main() {}"
     path = tmp_path / "unsafe.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
