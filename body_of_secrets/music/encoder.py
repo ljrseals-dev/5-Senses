@@ -1,11 +1,12 @@
 """Deterministic MIDI (SMF 0/1) and basic ABC encoders; no extra dependencies."""
-# ruff: noqa: E701, E702, E704
 from __future__ import annotations
+
 import math
 import re
 import struct
 from collections import defaultdict, deque
 from pathlib import Path
+
 from .tokens import DURATION_BEATS
 
 def _duration(beats: float) -> str:
