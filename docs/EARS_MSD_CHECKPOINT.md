@@ -69,10 +69,22 @@ redistribution terms are documented. Record and verify its SHA-256 before use.
 
 No numerical-equivalence claim is made. The supplied artifact contains FP16
 learnable parameters, so those values cannot be reconstructed exactly from
-the optimized file. A valid drift measurement requires the corresponding
-original FP32 source checkpoint and the reference implementation. Neither was
-included in the supplied archive. The current checkpoint README's structural
-check is not a numerical reference fixture.
+the optimized file. A public FP32 candidate was identified at
+https://huggingface.co/oriyonay/musicnn-pytorch/tree/main/weights as
+MSD_musicnn.pt (3.19 MB; published SHA-256
+6db4c22908da50888d6a259d41980988d3b9cecc5f96fd725ede09166996dd00). It was
+not acquired into this environment: the file-host download endpoint failed.
+Its relationship to the supplied optimized checkpoint has not been proven.
+
+There is also a concrete source-version discrepancy to resolve before a
+reference comparison. The supplied checkpoint's structural manifest expects
+keys such as timbral_1.conv.conv.weight and temp_1.conv.conv.weight. The
+currently published public PyTorch port defines TimbralBlock/TemporalBlock
+using conv_block, producing conv_block.conv.* key paths instead. Shapes may
+still correspond, but the key-name difference means the 75/75 local structural
+check is not an independent upstream compatibility check. Preserve the exact
+mapping and reference source revision in the provenance record before any
+key remapping or numerical comparison.
 
 ## Preprocessing is a separate gate
 
