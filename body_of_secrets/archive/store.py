@@ -10,7 +10,6 @@ import sqlite3
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+", re.IGNORECASE)
