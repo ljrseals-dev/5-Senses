@@ -114,46 +114,47 @@ class Archive:
         metadata = metadata or {}
         now = time.time()
 
-        cur = self._conn.cursor()
-        cur.execute(
-            """
-            INSERT OR REPLACE INTO documents
-            (doc_id, title, content, source, tags, imported_at, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (doc_id, title, content, source, json.dumps(tags), now, json.dumps(metadata)),
-        )
-
-        # Remove old term stats for this doc
-        cur.execute("SELECT term, tf FROM doc_terms WHERE doc_id = ?", (doc_id,))
-        old = cur.fetchall()
-        for row in old:
-            cur.execute(
-                "UPDATE term_stats SET df = df - 1 WHERE term = ? AND df > 0",
-                (row["term"],),
-            )
-        cur.execute("DELETE FROM doc_terms WHERE doc_id = ?", (doc_id,))
-
-        # Index new terms
-        tokens = tokenize(content)
-        tf: dict[str, int] = {}
-        for t in tokens:
-            tf[t] = tf.get(t, 0) + 1
-
-        for term, count in tf.items():
-            cur.execute(
-                "INSERT INTO doc_terms (doc_id, term, tf) VALUES (?, ?, ?)",
-                (doc_id, term, count),
-            )
+        with self._conn:
+            cur = self._conn.cursor()
             cur.execute(
                 """
-                INSERT INTO term_stats (term, df) VALUES (?, 1)
-                ON CONFLICT(term) DO UPDATE SET df = df + 1
+                INSERT OR REPLACE INTO documents
+                (doc_id, title, content, source, tags, imported_at, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (term,),
+                (doc_id, title, content, source, json.dumps(tags), now, json.dumps(metadata)),
             )
-
-        self._conn.commit()
+    
+            # Remove old term stats for this doc
+            cur.execute("SELECT term, tf FROM doc_terms WHERE doc_id = ?", (doc_id,))
+            old = cur.fetchall()
+            for row in old:
+                cur.execute(
+                    "UPDATE term_stats SET df = df - 1 WHERE term = ? AND df > 0",
+                    (row["term"],),
+                )
+            cur.execute("DELETE FROM doc_terms WHERE doc_id = ?", (doc_id,))
+    
+            # Index new terms
+            tokens = tokenize(content)
+            tf: dict[str, int] = {}
+            for t in tokens:
+                tf[t] = tf.get(t, 0) + 1
+    
+            for term, count in tf.items():
+                cur.execute(
+                    "INSERT INTO doc_terms (doc_id, term, tf) VALUES (?, ?, ?)",
+                    (doc_id, term, count),
+                )
+                cur.execute(
+                    """
+                    INSERT INTO term_stats (term, df) VALUES (?, 1)
+                    ON CONFLICT(term) DO UPDATE SET df = df + 1
+                    """,
+                    (term,),
+                )
+    
+    
         return doc_id
 
     def import_text_file(self, path: str | Path, *, source: str | None = None) -> str:
