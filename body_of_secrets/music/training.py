@@ -15,6 +15,7 @@ from .teacher import LoggedTeacher, build_prompt
 from .tokens import DURATION_BEATS, validate_tokens
 from .validator import candidate_from_model, evaluate_uncertainty
 
+
 def _record_metrics(root,*,iteration,queries,rejected,hopfield_hits,lines,model,holdout,status):
     holdout_perplexity=None
     if holdout is not None:
