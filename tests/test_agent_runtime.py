@@ -390,6 +390,10 @@ def test_tool_call_arguments_are_copied_and_json_validated():
         ToolCall("call-2", "lookup", {"bad": object()})
     with pytest.raises(ValueError, match="keys must be strings"):
         ToolCall("call-3", "lookup", {1: "not a JSON object key"})
+    cyclic = {}
+    cyclic["self"] = cyclic
+    with pytest.raises(ValueError, match="JSON-compatible"):
+        ToolCall("call-4", "lookup", cyclic)
 
 
 
