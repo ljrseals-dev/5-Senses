@@ -8,10 +8,12 @@ RESEARCH, AUDIT, and HYBRID may use an explicitly permitted provider.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from threading import Lock
 
-from body_of_secrets import __version__, __disclaimer__
+from body_of_secrets import __disclaimer__, __version__
 from body_of_secrets.archive import Archive
 from body_of_secrets.expert import ExpertSystem, build_default_expert
+
 from .evidence import Evidence, extract_evidence
 from .modes import get_mode
 from .prompts import build_system, build_user_message
@@ -47,18 +49,33 @@ class Engine:
         self.archive = archive
         self.expert = expert or build_default_expert()
         self._provider = provider
+        self._provider_resolved = provider is not None
+        self._provider_lock = Lock()
         self.require_llm = require_llm
 
     @property
     def provider(self) -> LLMProvider | None:
-        if self._provider is not None:
+        """Resolve an optional provider once, without breaking offline operation.
+
+        Missing credentials or an uninstalled optional SDK are equivalent to no
+        provider when ``require_llm`` is false. When it is true, the original
+        configuration/import error is surfaced to the caller.
+        """
+        with self._provider_lock:
+            if self._provider_resolved:
+                return self._provider
+
+            try:
+                provider = default_provider()
+            except (RuntimeError, ImportError):
+                if self.require_llm:
+                    raise
+                self._provider_resolved = True
+                return None
+
+            self._provider = provider
+            self._provider_resolved = True
             return self._provider
-        if self.require_llm:
-            return default_provider()
-        try:
-            return default_provider()
-        except RuntimeError:
-            return None
 
     def ask(
         self,

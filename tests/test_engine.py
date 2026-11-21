@@ -1,5 +1,9 @@
 """Integration tests for provider and execution-mode isolation."""
 
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 
 from body_of_secrets.brain import Engine
@@ -70,3 +74,69 @@ def test_mode_provider_permissions_are_explicit():
     assert get_mode("RESEARCH").allows_provider is True
     assert get_mode("AUDIT").allows_provider is True
     assert get_mode("HYBRID").allows_provider is True
+
+
+def test_optional_provider_sdk_missing_falls_back_to_classical(monkeypatch):
+    calls = []
+
+    def unavailable_provider():
+        calls.append(True)
+        raise ImportError("optional Anthropic SDK is not installed")
+
+    monkeypatch.setattr(engine_module, "default_provider", unavailable_provider)
+    engine = Engine()
+    first = engine.ask("An unmatched question", mode="RESEARCH")
+    second = engine.ask("Another unmatched question", mode="RESEARCH")
+
+    assert first.classical is True
+    assert second.classical is True
+    assert "no LLM provider" in first.answer
+    assert len(calls) == 1
+
+
+def test_required_provider_surfaces_missing_optional_sdk(monkeypatch):
+    def unavailable_provider():
+        raise ImportError("optional Anthropic SDK is not installed")
+
+    monkeypatch.setattr(engine_module, "default_provider", unavailable_provider)
+    with pytest.raises(ImportError, match="optional Anthropic SDK"):
+        Engine(require_llm=True).ask("Research this", mode="RESEARCH")
+
+
+def test_default_provider_is_cached(monkeypatch):
+    calls = []
+    provider = CallableProvider(fake_complete)
+
+    def resolve_provider():
+        calls.append(True)
+        return provider
+
+    monkeypatch.setattr(engine_module, "default_provider", resolve_provider)
+    engine = Engine()
+
+    first = engine.ask("First research question", mode="RESEARCH")
+    second = engine.ask("Second research question", mode="RESEARCH")
+
+    assert first.classical is False
+    assert second.classical is False
+    assert len(calls) == 1
+
+
+def test_concurrent_provider_discovery_is_single_flight(monkeypatch):
+    calls = []
+    calls_lock = threading.Lock()
+    provider = CallableProvider(fake_complete)
+
+    def resolve_provider():
+        with calls_lock:
+            calls.append(True)
+        time.sleep(0.02)
+        return provider
+
+    monkeypatch.setattr(engine_module, "default_provider", resolve_provider)
+    engine = Engine()
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        resolved = list(pool.map(lambda _: engine.provider, range(24)))
+
+    assert len(calls) == 1
+    assert all(item is provider for item in resolved)
