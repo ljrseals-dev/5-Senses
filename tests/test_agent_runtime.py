@@ -111,7 +111,7 @@ def test_tool_exception_is_recorded_and_does_not_abort_loop():
     def broken(args):
         raise RuntimeError("ordinary failure")
     registry = ToolRegistry()
-    registry.register(ToolSpec("lookup", broken))
+    registry.register(ToolSpec("lookup", broken, is_read_only=True))
     backend = FakeBackend([
         [ModelEvent("tool_call", tool_call=ToolCall("a", "lookup", {}))],
         [ModelEvent("text", text="recovered"), ModelEvent("complete")],
@@ -138,9 +138,9 @@ def test_empty_prompt_is_rejected():
 
 def test_duplicate_tool_names_are_rejected():
     registry = ToolRegistry()
-    registry.register(ToolSpec("lookup", lambda args: "ok"))
+    registry.register(ToolSpec("lookup", lambda args: "ok", is_read_only=True))
     with pytest.raises(ValueError, match="already registered"):
-        registry.register(ToolSpec("lookup", lambda args: "again"))
+        registry.register(ToolSpec("lookup", lambda args: "again", is_read_only=True))
 
 
 
@@ -152,7 +152,7 @@ def test_sync_read_only_handler_does_not_block_event_loop_and_times_out():
         return "late"
 
     registry = ToolRegistry()
-    registry.register(ToolSpec("lookup", slow_lookup))
+    registry.register(ToolSpec("lookup", slow_lookup, is_read_only=True))
     backend = FakeBackend([[
         ModelEvent("tool_call", tool_call=ToolCall("a", "lookup", {}))
     ], [ModelEvent("complete")]])
@@ -170,7 +170,7 @@ def test_sync_mutating_handler_is_rejected_at_registration():
 
 def test_tool_call_messages_follow_structured_call_response_contract():
     registry = ToolRegistry()
-    registry.register(ToolSpec("lookup", lambda args: "found"))
+    registry.register(ToolSpec("lookup", lambda args: "found", is_read_only=True))
     backend = FakeBackend([
         [ModelEvent("tool_call", tool_call=ToolCall("call-1", "lookup", {"q": "x"}))],
         [ModelEvent("complete")],
@@ -271,7 +271,7 @@ def test_invalid_model_event_is_reported_as_backend_failure():
 def test_duplicate_tool_call_ids_fail_before_corrupting_tool_transcript():
     called = []
     registry = ToolRegistry()
-    registry.register(ToolSpec("lookup", lambda args: called.append(args)))
+    registry.register(ToolSpec("lookup", lambda args: called.append(args), is_read_only=True))
     backend = FakeBackend([[
         ModelEvent("tool_call", tool_call=ToolCall("same", "lookup", {})),
         ModelEvent("tool_call", tool_call=ToolCall("same", "lookup", {})),
@@ -319,7 +319,7 @@ def test_tool_input_schema_is_exposed_to_backend():
         "required": ["query"],
     }
     registry = ToolRegistry()
-    registry.register(ToolSpec("lookup", lambda args: "ok", input_schema=schema))
+    registry.register(ToolSpec("lookup", lambda args: "ok", is_read_only=True, input_schema=schema))
     backend = FakeBackend([[ModelEvent("complete")]])
     asyncio.run(collect(AgentRuntime(backend, registry)))
     assert backend.calls[0][3][0]["input_schema"] == schema
@@ -337,7 +337,7 @@ def test_async_tool_timeout_is_returned_without_crashing_session():
         return "late"
 
     registry = ToolRegistry()
-    registry.register(ToolSpec("lookup", slow_lookup))
+    registry.register(ToolSpec("lookup", slow_lookup, is_read_only=True))
     backend = FakeBackend([
         [ModelEvent("tool_call", tool_call=ToolCall("a", "lookup", {}))],
         [ModelEvent("text", text="continued"), ModelEvent("complete")],
@@ -371,13 +371,13 @@ def test_model_idle_timeout_fails_and_closes_backend_stream():
 
 def test_tool_schema_is_copied_and_must_be_json_compatible():
     schema = {"type": "object", "properties": {"q": {"type": "string"}}}
-    tool = ToolSpec("lookup", lambda args: "ok", input_schema=schema)
+    tool = ToolSpec("lookup", lambda args: "ok", is_read_only=True, input_schema=schema)
     schema["properties"]["q"]["type"] = "integer"
     assert tool.input_schema["properties"]["q"]["type"] == "string"
     with pytest.raises(TypeError):
         tool.input_schema["properties"]["q"]["type"] = "integer"
     with pytest.raises(ValueError, match="JSON-compatible"):
-        ToolSpec("bad", lambda args: "ok", input_schema={"bad": object()})
+        ToolSpec("bad", lambda args: "ok", is_read_only=True, input_schema={"bad": object()})
 
 
 
