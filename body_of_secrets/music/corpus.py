@@ -20,9 +20,12 @@ class CorpusWriter:
         digest=hashlib.sha256(clean.encode()).hexdigest()
         with _LOCK:
             if clean in self._existing(): return False
+            timestamp=datetime.now(timezone.utc).isoformat()
+            qh=prompt_hash or "-"
+            safe_source=json.dumps(source,ensure_ascii=False)
             with self.path.open("a",encoding="utf-8",newline="\n") as f:
-                f.write(f"{clean} # src={source} sha256={digest}\n")
-            record={"timestamp":datetime.now(timezone.utc).isoformat(),"source":source,
+                f.write(f"{clean} # src={safe_source} ts={timestamp} qh={qh} sha256={digest}\n")
+            record={"timestamp":timestamp,"source":source,
                     "sha256":digest,"prompt_hash":prompt_hash,"tokens":clean}
             with self.manifest_path.open("a",encoding="utf-8",newline="\n") as f:
                 f.write(json.dumps(record,sort_keys=True)+"\n")
