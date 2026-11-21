@@ -41,6 +41,8 @@ It does not contain or reproduce Claude Code source code.
 - Ordinary tool errors are returned to the model as results instead of
   crashing the session.
 - The state machine has a maximum turn count and records transitions.
+- Per-turn model text, tool-call count, and tool-result output are bounded to
+  prevent unbounded memory/context growth. Tool exception text is capped.
 - Static and dynamic prompt regions are separate backend arguments.
 
 ## Current integration contract
