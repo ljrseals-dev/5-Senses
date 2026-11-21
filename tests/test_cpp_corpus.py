@@ -19,7 +19,9 @@ def test_manifest_is_metadata_only_and_rights_held():
     assert all(source["revision_status"] == "PINNED" for source in manifest["sources"])
     assert all(source["revision"] for source in manifest["sources"])
     assert all(item["rights_status"] == "UNVERIFIED_HOLD" for item in manifest["records"])
-    assert all(item["source_path"] for item in manifest["records"])\n    assert all(item["source_path_status"] == "VERIFIED_AT_PINNED_REVISION" for item in manifest["records"])\n    assert all(item["source_blob_sha"] for item in manifest["records"])
+    assert all(item["source_path"] for item in manifest["records"])
+    assert all(item["source_path_status"] == "VERIFIED_AT_PINNED_REVISION" for item in manifest["records"])
+    assert all(item["source_blob_sha"] for item in manifest["records"])
 
 
 def test_manifest_rejects_embedded_source_code(tmp_path):
