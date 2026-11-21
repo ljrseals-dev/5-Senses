@@ -82,7 +82,7 @@ class _Teacher:
 
 def test_active_teacher_sample_is_conditioned_on_context(tmp_path):
     seed=tmp_path/"seed"; seed.mkdir()
-    (seed/"scale.abc").write_text("X:1\nT:Scale\nL:1/4\nK:C\nC D E F G A B c d |\n")
+    (seed/"scale.abc").write_text("X:1\nT:Scale\nL:1/4\nK:C\nC D E F G A B c d e |\n")
     teacher=_Teacher()
     version=train_music(seed,work_dir=tmp_path/"work",order=5,max_iterations=1,teacher=teacher)
     assert version=="v002" and teacher.calls==1
