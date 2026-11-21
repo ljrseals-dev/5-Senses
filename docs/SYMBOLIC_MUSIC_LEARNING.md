@@ -2,32 +2,29 @@
 
 This extension adds symbolic MIDI/ABC learning to BODY OF SECRETS without waveform synthesis or changes to the existing Brain/Ears path.
 
-## Scope and token grammar
+## Token grammar
 
-- Pitch: P000 through P127.
-- Duration: D016 (sixteenth), D008 (eighth), D004 (quarter), D002 (half), D001 (whole).
-- Rest: DRST; chord marker: CHD; optional bar marker: B.
-- A note is a Pxxx/Dxxx pair. A chord is CHD followed by at least two pitch/duration pairs sorted by pitch.
-- MIDI input supports PPQ-based SMF format 0/1, note on/off, running status and simultaneous-note grouping. SMPTE timing is rejected.
-- ABC support covers basic letters, octave marks, accidentals and simple duration suffixes. Tuplets, broken rhythms, inline key changes and complex decorations are not interpreted.
+Pitch P000-P127; duration D016/D008/D004/D002/D001; rest DRST; chord marker CHD; optional bar marker B. Notes are Pxxx/Dxxx pairs. To make chord boundaries unambiguous without inventing another token, each chord tone is prefixed by CHD: CHD P060 D004 CHD P067 D004. The following unmarked P/D pair is the next melodic event.
+
+MIDI supports PPQ-based SMF format 0/1, note on/off, running status and same-onset polyphonic grouping. SMPTE timing is rejected. ABC covers basic note letters, octave marks, accidentals and simple duration suffixes; tuplets, broken rhythms, inline key changes and complex decorations are not interpreted.
 
 ## Commands
 
 \`\`\`bash
-python -m body_of_secrets.music.cli encode ./midi --output music_data/corpus/symbolic_music.txt
-python -m body_of_secrets.music.cli train ./midi --work-dir music_data --order 5
-python -m body_of_secrets.music.cli predict --work-dir music_data --context "P060 D004 P064 D004"
-python -m body_of_secrets.music.cli rollback v001 --work-dir music_data
+body-of-secrets music encode ./midi --output music_data/corpus/symbolic_music.txt
+body-of-secrets music train ./midi --work-dir music_data --order 5
+body-of-secrets music predict --work-dir music_data --context "P060 D004 P064 D004"
+body-of-secrets music rollback v001 --work-dir music_data
 \`\`\`
 
-The existing natural-language n-gram tokenizer is deliberately untouched: this model preserves case and token boundaries.
+Use --teacher-plugin PLUGIN_NAME with train to enable an installed plugin from Python entry-point group body_of_secrets.music_teachers. It must implement complete(prompt: str) -> str or be a zero-argument factory returning that interface. No provider SDK/network dependency is bundled. LoggedTeacher logs raw response, timestamp, prompt hash and errors to llm_responses.log; timeout/retries are configurable.
 
-## Provenance, snapshots and teacher plugins
+## Provenance and snapshots
 
-Accepted lines carry source and SHA-256 comments; provenance.jsonl records timestamp, source, content hash and optional prompt hash. Invalid teacher data is written to rejected_samples.log. Snapshots contain the model, motif bank, exact corpus, SHA-256 manifest and parent metadata. Rollback verifies hashes before restoring the corpus and CURRENT pointer.
+Accepted lines carry source and SHA-256 comments; provenance.jsonl records timestamp, source, content hash and optional prompt hash. Rejected teacher samples go to rejected_samples.log. Snapshots contain n-gram model, motif patterns, exact corpus, SHA-256 manifest and parent metadata. Rollback verifies hashes before restoring the corpus and CURRENT pointer.
 
-Teacher plugins are optional Python entry points in group body_of_secrets.music_teachers. They must implement complete(prompt: str) -> str or provide a zero-argument factory returning such an object. No provider SDK or network dependency is bundled. LoggedTeacher records raw response, timestamp, prompt hash and errors, with timeout/retry handling. Teacher output is untrusted and is validated before corpus ingestion.
+The natural-language n-gram tokenizer is untouched; this music model preserves case and exact token boundaries. The teacher is not part of ordinary inference.
 
 ## Integration limits
 
-The existing HopfieldNetwork uses dense Hebbian weights. MotifMemory therefore builds an actual HopfieldNetwork only for banks up to 128 patterns; larger banks remain a bounded deterministic bipolar motif index. This avoids quadratic memory/time blowups while preserving the configured 5,000-pattern ceiling. The current core has no LRU or motif-registration API, so frequency-ranked deterministic retention is used instead of claiming LRU behavior. Key validation requires an explicit pitch-class set; no key is guessed from context. The LLM is never part of normal inference.
+The existing HopfieldNetwork uses dense Hebbian weights. MotifMemory materializes an actual HopfieldNetwork only for banks up to 128 patterns; larger banks remain a bounded deterministic bipolar motif index. This avoids quadratic memory/time blowups while preserving the configured 5,000-pattern ceiling. The current core has no LRU or motif-registration API, so deterministic frequency ranking is used instead of claiming LRU behavior. Key validation requires an explicit pitch-class set; no key is guessed from context.
