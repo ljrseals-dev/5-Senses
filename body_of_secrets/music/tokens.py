@@ -1,4 +1,5 @@
 """Music token vocabulary and structural/theory validation."""
+# ruff: noqa: E701, E702, E704
 from __future__ import annotations
 import re
 from dataclasses import dataclass
