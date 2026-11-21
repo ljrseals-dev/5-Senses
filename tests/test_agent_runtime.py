@@ -466,3 +466,50 @@ def test_invalid_payload_limits_are_rejected():
     backend = FakeBackend([])
     with pytest.raises(ValueError, match="max_tool_calls_per_turn"):
         AgentRuntime(backend, max_tool_calls_per_turn=0)
+
+
+
+def test_async_input_validator_is_awaited_before_tool_execution():
+    called = []
+    async def validate(args):
+        await asyncio.sleep(0)
+        if "query" not in args:
+            raise ValueError("query is required")
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        "lookup",
+        lambda args: called.append(args) or "ok",
+        is_read_only=True,
+        validate_input=validate,
+    ))
+    backend = FakeBackend([
+        [ModelEvent("tool_call", tool_call=ToolCall("one", "lookup", {"query": "x"}))],
+        [ModelEvent("complete")],
+    ])
+    events = asyncio.run(collect(AgentRuntime(backend, registry)))
+    result = next(event for event in events if event.kind == "tool_result")
+    assert result.data["status"] == "OK"
+    assert called == [{"query": "x"}]
+
+
+def test_async_input_validator_failure_prevents_tool_execution():
+    called = []
+    async def validate(args):
+        raise ValueError("invalid input")
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec(
+        "lookup",
+        lambda args: called.append(args),
+        is_read_only=True,
+        validate_input=validate,
+    ))
+    backend = FakeBackend([
+        [ModelEvent("tool_call", tool_call=ToolCall("one", "lookup", {}))],
+        [ModelEvent("complete")],
+    ])
+    events = asyncio.run(collect(AgentRuntime(backend, registry)))
+    result = next(event for event in events if event.kind == "tool_result")
+    assert result.data["status"] == "ERROR"
+    assert called == []
