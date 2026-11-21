@@ -37,10 +37,15 @@ def _record_metrics(root,*,iteration,queries,rejected,hopfield_hits,lines,model,
 def train_music(seed_directory,*,work_dir="music_data",order=5,max_iterations=0,
                 teacher:LoggedTeacher|None=None,entropy_threshold=2.,max_patterns=5000,
                 holdout_corpus=None):
-    if not isinstance(max_iterations,int) or max_iterations < 0:
+    if not isinstance(max_iterations,int) or isinstance(max_iterations,bool) or max_iterations < 0:
         raise ValueError("max_iterations must be a non-negative integer")
-    if not math.isfinite(entropy_threshold) or entropy_threshold < 0:
+    if (not isinstance(entropy_threshold,(int,float)) or isinstance(entropy_threshold,bool)
+        or not math.isfinite(entropy_threshold) or entropy_threshold < 0):
         raise ValueError("entropy_threshold must be finite and non-negative")
+    if not isinstance(max_patterns,int) or isinstance(max_patterns,bool) or max_patterns < 1:
+        raise ValueError("max_patterns must be a positive integer")
+    if not isinstance(order,int) or isinstance(order,bool) or order < 1:
+        raise ValueError("order must be a positive integer")
     if holdout_corpus is not None and not Path(holdout_corpus).is_file():
         raise FileNotFoundError(holdout_corpus)
     root=Path(work_dir); corpus=root/"corpus"/"symbolic_music.txt"; corpus.parent.mkdir(parents=True,exist_ok=True)
