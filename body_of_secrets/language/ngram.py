@@ -84,6 +84,8 @@ class NGramModel:
         return math.exp(-logp / N)
 
     def generate(self, length: int = 50, seed: str | None = None) -> str:
+        if not isinstance(length, int) or isinstance(length, bool) or length < 0:
+            raise ValueError("length must be a non-negative integer")
         if not self._trained or not self.vocab:
             return ""
 
@@ -119,6 +121,8 @@ class NGramModel:
         return " ".join(output)
 
     def most_likely_continuations(self, prefix: str, k: int = 5) -> list[tuple[str, float]]:
+        if not isinstance(k, int) or isinstance(k, bool) or k < 0:
+            raise ValueError("k must be a non-negative integer")
         tokens = self._tokens(prefix)
         if self.n == 1:
             context = ()
