@@ -18,6 +18,8 @@ class SnapshotStore:
     def commit(self,model,memory,corpus_path,*,llm_samples=0):
         versions=sorted(p.name for p in self.root.glob("v[0-9][0-9][0-9]") if p.is_dir())
         name=f"v{(int(versions[-1][1:])+1) if versions else 1:03d}"
+        parent=self.current_file.read_text(encoding="ascii").strip() if self.current_file.exists() else (versions[-1] if versions else None)
+        if parent: self.verify(parent)
         temp=Path(tempfile.mkdtemp(prefix=".snapshot-",dir=self.root))
         try:
             model.save(temp/"ngram_music.json"); memory.save(temp/"hopfield_patterns.json")
@@ -27,7 +29,7 @@ class SnapshotStore:
             (temp/"corpus_hash.txt").write_text(hashes["corpus.txt"]+"\n",encoding="ascii")
             corpus_lines=sum(1 for x in (temp/"corpus.txt").read_text(encoding="utf-8").splitlines()
                              if x.strip() and not x.lstrip().startswith("#"))
-            metadata={"schema":1,"version":name,"parent":versions[-1] if versions else None,
+            metadata={"schema":1,"version":name,"parent":parent,
                       "timestamp":datetime.now(timezone.utc).isoformat(),"corpus_lines":corpus_lines,
                       "llm_samples":llm_samples,"sha256":hashes}
             (temp/"metadata.json").write_text(json.dumps(metadata,sort_keys=True,indent=2)+"\n",encoding="utf-8")
