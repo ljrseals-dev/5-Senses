@@ -76,7 +76,16 @@ def predict_msd_tags(model: object, patches: object, *, top_k: int = 10) -> Musi
         raise ImportError("install body-of-secrets[musicnn] to run MSD inference") from exc
 
     try:
-        parameter = next(model.parameters())  # type: ignore[attr-defined]
+        parameter = next(
+            (
+                module.weight
+                for module in model.modules()  # type: ignore[attr-defined]
+                if isinstance(module, (torch.nn.Conv2d, torch.nn.Linear))
+            ),
+            None,
+        )
+        if parameter is None:
+            parameter = next(model.parameters())  # type: ignore[attr-defined]
     except (AttributeError, StopIteration) as exc:
         raise TypeError("model must be a parameterized MusicNN model") from exc
 
@@ -221,8 +230,13 @@ def archive_musicnn_analysis(
         raise ValueError("provenance must contain an integration commit SHA")
     if provenance.get("truth_status") != "UNKNOWN":
         raise ValueError("MusicNN archive records must remain UNKNOWN")
-    if provenance.get("tag_quality_validated") is not False:
-        raise ValueError("unvalidated MusicNN tags cannot be marked quality-validated")
+    for flag in (
+        "numerical_equivalence_verified",
+        "preprocessing_parity_verified",
+        "tag_quality_validated",
+    ):
+        if provenance.get(flag) is not False:
+            raise ValueError(f"unverified MusicNN gate must remain false: {flag}")
     path = Path(audio_path)
     if not path.is_file():
         raise FileNotFoundError(path)
@@ -261,5 +275,9 @@ def archive_musicnn_analysis(
         source=f"sha256:{audio_sha256}",
         tags=["ears", "musicnn", "model-output", "unverified"],
         metadata=metadata,
-        doc_id=f"musicnn_{audio_sha256[:16]}_{checkpoint_sha256[:8]}",
+        doc_id=(
+            f"musicnn_{audio_sha256[:12]}_{checkpoint_sha256[:8]}_"
+            f"{str(provenance.get('preprocessing_sha256', 'unknown'))[:8]}_"
+            f"{integration_commit_sha[:8]}"
+        ),
     )
