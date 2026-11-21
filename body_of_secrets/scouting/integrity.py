@@ -7,7 +7,7 @@ import os
 import re
 import stat
 from pathlib import Path, PurePosixPath
-from typing import Iterable
+from collections.abc import Iterable
 
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
