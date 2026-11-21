@@ -42,7 +42,7 @@ class LoggedTeacher:
         return value
     def complete(self,prompt):
         prompt_hash=hashlib.sha256(prompt.encode()).hexdigest(); raw=""; error=None
-        for attempt in range(self.retries+1):
+        for _ in range(self.retries+1):
             try:
                 raw=self._call(prompt); error=None; break
             except TimeoutError as exc:
