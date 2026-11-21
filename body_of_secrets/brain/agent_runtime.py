@@ -161,6 +161,11 @@ class ToolCall:
             raise ValueError("tool name must be a non-empty string")
         if not isinstance(self.arguments, Mapping):
             raise TypeError("tool call arguments must be a mapping")
+        try:
+            arguments_json = json.dumps(dict(self.arguments), allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("tool call arguments must contain only JSON-compatible values") from exc
+        object.__setattr__(self, "arguments", json.loads(arguments_json))
 
 
 @dataclass(frozen=True)
