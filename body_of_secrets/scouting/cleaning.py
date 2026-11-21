@@ -270,38 +270,75 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         raise FileExistsError(manifest_path)
 
     results: list[CleanResult] = []
-    for path in files:
-        relative = path.relative_to(source)
-        output = destination / relative
-        review = review_root / (str(relative) + ".review.jsonl")
-        results.append(clean_file(
-            path, output, ranker=ranker, review_path=review,
-            apply_em_corrections=apply_em_corrections,
-        ))
-    manifest = {
-        "schema_version": 1,
-        "method": "corpus-local EM noisy-channel ranking plus conservative Unicode/layout normalization",
-        "model_training": "unsupervised corpus-local profile; not a pretrained model",
-        "em_iterations": iterations,
-        "em_corrections_applied": apply_em_corrections,
-        "source_root": str(source),
-        "review_root": str(review_root),
-        "files": [
-            {
-                "source": item.source, "output": item.output,
-                "raw_sha256": item.raw_sha256, "cleaned_sha256": item.cleaned_sha256,
-                "accepted_corrections": sum(1 for edit in item.edits
-                                            if edit.get("kind") == "em_ocr_correction"),
-                "review_proposals": sum(1 for proposal in item.proposals
-                                        if proposal.action == "REVIEW"),
-            }
-            for item in results
-        ],
-    }
-    manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    with manifest_path.open("x", encoding="utf-8") as stream:
-        json.dump(manifest, stream, indent=2, ensure_ascii=False)
-        stream.write("\n")
+    created_files: list[Path] = []
+    manifest_created = False
+    try:
+        for path in files:
+            relative = path.relative_to(source)
+            output = destination / relative
+            review = review_root / (str(relative) + ".review.jsonl")
+            result = clean_file(
+                path, output, ranker=ranker, review_path=review,
+                apply_em_corrections=apply_em_corrections,
+            )
+            results.append(result)
+            created_files.extend((output, review))
+
+        manifest = {
+            "schema_version": 1,
+            "method": "corpus-local EM noisy-channel ranking plus conservative Unicode/layout normalization",
+            "model_training": "unsupervised corpus-local profile; not a pretrained model",
+            "em_iterations": iterations,
+            "em_corrections_applied": apply_em_corrections,
+            "source_root": str(source),
+            "review_root": str(review_root),
+            "files": [
+                {
+                    "source": item.source, "output": item.output,
+                    "raw_sha256": item.raw_sha256, "cleaned_sha256": item.cleaned_sha256,
+                    "accepted_corrections": sum(1 for edit in item.edits
+                                                if edit.get("kind") == "em_ocr_correction"),
+                    "review_proposals": sum(1 for proposal in item.proposals
+                                            if proposal.action == "REVIEW"),
+                }
+                for item in results
+            ],
+        }
+        manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        with manifest_path.open("x", encoding="utf-8") as stream:
+            manifest_created = True
+            json.dump(manifest, stream, indent=2, ensure_ascii=False)
+            stream.write("\\n")
+    except Exception:
+        # Roll back only files this invocation successfully created. Never
+        # remove a path that appeared concurrently after our preflight.
+        for created_path in reversed(created_files):
+            try:
+                created_path.unlink()
+            except FileNotFoundError:
+                pass
+        if manifest_created:
+            try:
+                manifest_path.unlink()
+            except FileNotFoundError:
+                pass
+        # Prune empty directories only; leave concurrent/unowned files intact.
+        for root in (destination, review_root):
+            if root.exists() and root.is_dir() and not root.is_symlink():
+                descendants = sorted(
+                    (item for item in root.rglob("*") if item.is_dir() and not item.is_symlink()),
+                    key=lambda item: len(item.parts), reverse=True,
+                )
+                for directory in descendants:
+                    try:
+                        directory.rmdir()
+                    except OSError:
+                        pass
+                try:
+                    root.rmdir()
+                except OSError:
+                    pass
+        raise
     return results
 
 
