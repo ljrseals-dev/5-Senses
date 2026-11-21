@@ -73,8 +73,8 @@ def _midi(path: Path) -> str:
         event = sorted(grouped[start])
         if start - previous_end >= division // 8:
             tokens.append("DRST")
-        if len(event) > 1: tokens.append("CHD")
         for pitch, ticks in event:
+            if len(event) > 1: tokens.append("CHD")
             tokens.extend((f"P{pitch:03d}", _duration(ticks / division)))
         previous_end = max(previous_end, max(start + duration for _, duration in event))
     return " ".join(tokens)
