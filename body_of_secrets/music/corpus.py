@@ -21,13 +21,33 @@ class CorpusWriter:
         else: self._tokens_cache={strip_comments(x) for x in self.path.read_text(encoding="utf-8").splitlines() if strip_comments(x)}
         return self._tokens_cache
     def _existing_sources(self):
+        # The corpus line is the write-ahead record. Recover source idempotency
+        # from it if the process died after appending the corpus but before the
+        # separate provenance manifest was updated.
         self._sources_cache=set()
+        if self.path.exists():
+            for line in self.path.read_text(encoding="utf-8").splitlines():
+                _, marker, metadata = line.partition("#")
+                if not marker:
+                    continue
+                for field in metadata.split():
+                    if field.startswith("src="):
+                        try:
+                            source=json.loads(field[4:])
+                        except (json.JSONDecodeError,TypeError):
+                            continue
+                        clean=strip_comments(line)
+                        if isinstance(source,str) and clean:
+                            self._sources_cache.add((source,clean))
+                        break
         if self.manifest_path.exists():
             for line in self.manifest_path.read_text(encoding="utf-8").splitlines():
                 try:
-                    row=json.loads(line); self._sources_cache.add((row.get("source"),row.get("tokens")))
+                    row=json.loads(line)
                 except (json.JSONDecodeError,TypeError):
                     continue
+                if isinstance(row,dict) and isinstance(row.get("source"),str) and isinstance(row.get("tokens"),str):
+                    self._sources_cache.add((row["source"],row["tokens"]))
         return self._sources_cache
     def append(self,tokens,*,source,prompt_hash=None):
         if not isinstance(source,str) or not source:
@@ -44,12 +64,12 @@ class CorpusWriter:
             timestamp=datetime.now(timezone.utc).isoformat()
             safe_source=json.dumps(source,ensure_ascii=False)
             qh=prompt_hash or "-"
-            with self.path.open("a",encoding="utf-8",newline="\n") as stream:
-                stream.write(f"{clean} # src={safe_source} ts={timestamp} qh={qh} sha256={digest}\n")
+            with self.path.open("a",encoding="utf-8",newline="\\n") as stream:
+                stream.write(f"{clean} # src={safe_source} ts={timestamp} qh={qh} sha256={digest}\\n")
             record={"timestamp":timestamp,"source":source,"sha256":digest,
                     "prompt_hash":prompt_hash,"tokens":clean}
-            with self.manifest_path.open("a",encoding="utf-8",newline="\n") as stream:
-                stream.write(json.dumps(record,ensure_ascii=False,sort_keys=True)+"\n")
+            with self.manifest_path.open("a",encoding="utf-8",newline="\\n") as stream:
+                stream.write(json.dumps(record,ensure_ascii=False,sort_keys=True)+"\\n")
             self._existing_tokens().add(clean)
             self._existing_sources().add((source,clean))
         return True
@@ -57,5 +77,5 @@ class CorpusWriter:
         self.rejected_path.parent.mkdir(parents=True,exist_ok=True)
         record={"timestamp":datetime.now(timezone.utc).isoformat(),"reason":list(reason),
                 "context":context,"raw":raw}
-        with _LOCK,self.rejected_path.open("a",encoding="utf-8",newline="\n") as stream:
-            stream.write(json.dumps(record,ensure_ascii=False,sort_keys=True)+"\n")
+        with _LOCK,self.rejected_path.open("a",encoding="utf-8",newline="\\n") as stream:
+            stream.write(json.dumps(record,ensure_ascii=False,sort_keys=True)+"\\n")
