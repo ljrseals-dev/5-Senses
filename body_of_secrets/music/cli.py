@@ -1,12 +1,16 @@
 """Standalone symbolic music command-line interface."""
-# ruff: noqa: E401, E701, E702, E704
 from __future__ import annotations
-import argparse,json
+
+import argparse
+import json
 from pathlib import Path
+
 from .encoder import encode_directory
 from .snapshots import SnapshotStore
-from .teacher import LoggedTeacher,load_teacher_plugin
+from .teacher import LoggedTeacher, load_teacher_plugin
 from .training import train_music
+
+
 def main(argv=None):
     parser=argparse.ArgumentParser(prog="5-senses-music"); sub=parser.add_subparsers(dest="command",required=True)
     enc=sub.add_parser("encode"); enc.add_argument("source"); enc.add_argument("--output",default="music_data/corpus/symbolic_music.txt")
