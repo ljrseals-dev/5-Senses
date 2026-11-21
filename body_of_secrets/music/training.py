@@ -29,18 +29,24 @@ def train_music(seed_directory,*,work_dir="music_data",order=5,max_iterations=0,
         candidates=[line.split("#",1)[0].strip() for line in lines
                     if len(line.split("#",1)[0].split())>=order]
         if not candidates: break
-        context=" ".join(candidates[-1].split()[-(order-1):])
+        # Keep the final observed token as the training target; the context itself must have a successor.
+        context=" ".join(candidates[-1].split()[-order:-1])
         candidate=candidate_from_model(model,context,8)
         verdict=evaluate_uncertainty(model,memory,context,candidate,entropy_threshold=entropy_threshold)
         if not verdict.is_uncertain: break
         prompt=build_prompt(context,candidate,verdict.violations)
         prompt_hash=hashlib.sha256(prompt.encode()).hexdigest()
         try: raw=teacher.complete(prompt)
-        except RuntimeError: continue
+        except RuntimeError: break
         result=validate_tokens(raw)
         if not result.valid:
             writer.reject(raw,reason=result.violations,context=context); continue
-        if not writer.append(" ".join(result.tokens),source="llm",prompt_hash=prompt_hash): continue
+        # Store the context together with its corrected continuation so the n-gram learns P(next|context).
+        sample=" ".join((context,*result.tokens))
+        combined=validate_tokens(sample)
+        if not combined.valid:
+            writer.reject(raw,reason=combined.violations,context=context); continue
+        if not writer.append(sample,source="llm",prompt_hash=prompt_hash): continue
         accepted+=1; lines=corpus.read_text(encoding="utf-8").splitlines()
         model=MusicNGramModel.from_file(corpus,order); memory.build([x.split("#",1)[0] for x in lines])
         version=store.commit(model,memory,corpus,llm_samples=accepted)
