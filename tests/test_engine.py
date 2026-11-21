@@ -116,3 +116,27 @@ def test_default_provider_is_cached(monkeypatch):
     assert first.classical is False
     assert second.classical is False
     assert len(calls) == 1
+
+
+def test_concurrent_provider_discovery_is_single_flight(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    import threading
+    import time
+
+    calls = []
+    calls_lock = threading.Lock()
+    provider = CallableProvider(fake_complete)
+
+    def resolve_provider():
+        with calls_lock:
+            calls.append(True)
+        time.sleep(0.02)
+        return provider
+
+    monkeypatch.setattr(engine_module, "default_provider", resolve_provider)
+    engine = Engine()
+    with ThreadPoolExecutor(max_workers=12) as pool:
+        resolved = list(pool.map(lambda _: engine.provider, range(24)))
+
+    assert len(calls) == 1
+    assert all(item is provider for item in resolved)
