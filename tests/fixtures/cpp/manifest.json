@@ -35,6 +35,16 @@
       "sha256": "99658174335bab38102ffe51dfa9cb3f4d67ddd80308f443a90502739754d0f0"
     },
     {
+      "id": "cpp.asan.heap-use-after-free.malloc-write.v1",
+      "path": "asan/heap_use_after_free_malloc_write.cpp",
+      "standard": "c++17",
+      "expected": "ASAN_FINDING",
+      "sanitizers": ["address"],
+      "timeout_seconds": 10,
+      "tags": ["lifetime", "heap", "malloc", "free", "use-after-free", "write-after-free", "negative-test"],
+      "sha256": "d16582b0699aaa23d35e6e2161bf975dac6fb3051bae0eb1de3214ea73dbeee4"
+    },
+    {
       "id": "cpp.ubsan.signed-overflow.v1",
       "path": "ubsan/signed_overflow.cpp",
       "standard": "c++11",
