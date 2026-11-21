@@ -195,3 +195,9 @@ def test_public_bounds_reject_invalid_numeric_types(tmp_path):
         SnapshotStore(tmp_path/"snapshots").commit(
             MusicNGramModel(2),MotifMemory(),tmp_path/"corpus.txt",llm_samples=-1
         )
+
+def test_abc_zero_rest_duration_denominator_is_rejected(tmp_path):
+    path=tmp_path/"invalid-rest.abc"
+    path.write_text("X:1\nL:1/4\nK:C\nz1/0 D |\n")
+    with pytest.raises(ValueError,match="denominator must be non-zero"):
+        encode_file(path)
