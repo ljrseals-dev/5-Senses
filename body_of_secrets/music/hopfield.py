@@ -56,8 +56,8 @@ class MotifMemory:
         return {"schema":1,"max_patterns":self.max_patterns,"dimensions":self.dimensions,"patterns":self.patterns}
     @classmethod
     def from_dict(cls,data):
-        if data.get("schema") != 1: raise ValueError("unsupported motif snapshot schema")
-        if not isinstance(data,dict) or not isinstance(data.get("patterns"),list):
+        if not isinstance(data,dict) or data.get("schema") != 1: raise ValueError("unsupported motif snapshot schema")
+        if not isinstance(data.get("patterns"),list):
             raise ValueError("invalid motif snapshot")
         obj=cls(int(data["max_patterns"]),int(data["dimensions"])); obj.patterns=data["patterns"]
         if len(obj.patterns)>obj.max_patterns: raise ValueError("pattern capacity exceeded")
