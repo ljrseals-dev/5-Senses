@@ -25,7 +25,7 @@ class MotifMemory:
         self.max_patterns, self.dimensions, self.patterns = max_patterns, dimensions, []
         self._network = None
     def build(self, lines, min_frequency=3):
-        if min_frequency < 1: raise ValueError("min_frequency must be positive")
+        if not isinstance(min_frequency,int) or isinstance(min_frequency,bool) or min_frequency < 1: raise ValueError("min_frequency must be a positive integer")
         counts = Counter()
         for line in lines:
             t = line.split("#",1)[0].split()
@@ -57,17 +57,21 @@ class MotifMemory:
     @classmethod
     def from_dict(cls,data):
         if not isinstance(data,dict) or data.get("schema") != 1: raise ValueError("unsupported motif snapshot schema")
-        if not isinstance(data.get("patterns"),list):
+        if (not isinstance(data.get("max_patterns"),int) or isinstance(data.get("max_patterns"),bool)
+            or not isinstance(data.get("dimensions"),int) or isinstance(data.get("dimensions"),bool)
+            or not isinstance(data.get("patterns"),list)):
             raise ValueError("invalid motif snapshot")
-        obj=cls(int(data["max_patterns"]),int(data["dimensions"])); obj.patterns=data["patterns"]
+        obj=cls(data["max_patterns"],data["dimensions"]); obj.patterns=data["patterns"]
         if len(obj.patterns)>obj.max_patterns: raise ValueError("pattern capacity exceeded")
         for pattern in obj.patterns:
             if (not isinstance(pattern,dict) or not isinstance(pattern.get("tokens"),list)
-                or not isinstance(pattern.get("frequency"),int) or pattern["frequency"] < 1
-                or pattern.get("source") != "ngram_motif"
+                or not pattern["tokens"] or any(not isinstance(token,str) for token in pattern["tokens"])
+                or not isinstance(pattern.get("frequency"),int) or isinstance(pattern.get("frequency"),bool)
+                or pattern["frequency"] < 1 or pattern.get("source") != "ngram_motif"
                 or not isinstance(pattern.get("vector"),list)
                 or len(pattern["vector"]) != obj.dimensions
-                or any(bit not in (-1,1) for bit in pattern["vector"])):
+                or any(type(bit) is not int or bit not in (-1,1) for bit in pattern["vector"])
+                or pattern["vector"] != project_motif(tuple(pattern["tokens"]),obj.dimensions)):
                 raise ValueError("invalid motif pattern")
         obj._network=obj.rebuild_network()
         return obj
