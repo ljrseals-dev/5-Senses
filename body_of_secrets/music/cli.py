@@ -1,4 +1,5 @@
 """Standalone symbolic music command-line interface."""
+# ruff: noqa: E701, E702, E704
 from __future__ import annotations
 import argparse,json
 from pathlib import Path
