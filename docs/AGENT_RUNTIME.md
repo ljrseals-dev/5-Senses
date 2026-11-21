@@ -97,6 +97,7 @@ async for event in runtime.run("Find documents about Hopfield energy"):
 
 Context compaction is injected via a caller-supplied function and its output
 is validated before replacing the live transcript. If the message threshold is
-reached without a compactor, the initial user request and the configured
-number of recent messages are retained; an explicit event reports this lossy
-fallback.
+reached without a compactor, the initial user request and recent messages are
+retained. Fallback trimming backs up to the assistant tool-call record when a
+tool result would otherwise be orphaned, and drops unmatched tool results.
+An explicit event reports this lossy fallback.
