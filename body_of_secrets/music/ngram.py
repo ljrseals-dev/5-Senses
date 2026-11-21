@@ -35,6 +35,15 @@ class MusicNGramModel(NGramModel):
     def continuations(self,context,limit=5):
         if limit<1: raise ValueError("limit must be positive")
         return sorted(self.distribution(context).items(),key=lambda x:(-x[1],x[0]))[:limit]
+    def perplexity(self,lines):
+        logp=0.0; count=0; fallback=1/max(1,len(self.vocab))
+        for line in lines:
+            tokens=strip_comments(line).split()
+            for i in range(self.n-1,len(tokens)):
+                probabilities=self.distribution(tokens[i-self.n+1:i])
+                probability=probabilities.get(tokens[i],fallback)
+                logp+=math.log(max(probability,1e-300)); count+=1
+        return math.exp(-logp/count) if count else float("inf")
     def to_dict(self):
         return {"schema":1,"order":self.n,"vocab":sorted(self.vocab),
                 "counts":[{"context":list(k),"next":dict(sorted(v.items()))}
