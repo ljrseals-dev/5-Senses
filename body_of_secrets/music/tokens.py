@@ -50,7 +50,7 @@ def validate_tokens(value,*,min_tokens=4,max_tokens=64,max_interval=12,
                 errors.append("invalid_event_structure"); i+=1; continue
             pitches.append(int(m.group(1))); durations.append(tokens[i+1]); i+=2
         if not pitches: continue
-        if chord and (len(pitches)<2 or pitches != sorted(pitches) or len(set(durations)) != 1):
+        if chord and (len(pitches)<2 or pitches != sorted(pitches)):
             errors.append("invalid_event_structure")
         # Chord tones are simultaneous: compare the chord root with the prior
         # melodic event, but never compare notes within the chord as a melody.
@@ -59,7 +59,7 @@ def validate_tokens(value,*,min_tokens=4,max_tokens=64,max_interval=12,
         previous_pitch=pitches[0]
         if key_pitch_classes is not None and any(p%12 not in key_pitch_classes for p in pitches):
             errors.append("outside_key")
-        beat_window+=min(DURATION_BEATS[d] for d in durations); event_count+=1
+        beat_window+=max(DURATION_BEATS[d] for d in durations); event_count+=1
         if beat_window>=4:
             if event_count>max_events_per_four_beats: errors.append("rhythm_density_exceeded")
             beat_window%=4; event_count=0
