@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import importlib.metadata
 import json
+import math
 import queue
 import threading
 from datetime import datetime, timezone
@@ -30,7 +31,11 @@ def load_teacher_plugin(name=None):
 
 class LoggedTeacher:
     def __init__(self,teacher,log_path,*,timeout=30.,retries=1):
-        if timeout<=0 or retries<0: raise ValueError("timeout must be positive and retries non-negative")
+        if (not isinstance(timeout,(int,float)) or isinstance(timeout,bool)
+            or not math.isfinite(timeout) or timeout <= 0):
+            raise ValueError("timeout must be a finite positive number")
+        if not isinstance(retries,int) or isinstance(retries,bool) or retries < 0:
+            raise ValueError("retries must be a non-negative integer")
         self.teacher,self.log_path,self.timeout,self.retries=teacher,Path(log_path),timeout,retries
         self.lock=threading.Lock()
         self._worker_lock=threading.Lock()
