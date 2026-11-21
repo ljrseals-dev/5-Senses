@@ -21,7 +21,8 @@ It does not contain or reproduce Claude Code source code.
   require `allow_destructive=True`.
 - Each tool may publish a JSON-compatible `input_schema` to the backend.
   The registered validator remains the enforcement point; the schema is a
-  model-facing contract, not a security boundary.
+  model-facing contract, not a security boundary. Sync validators run off-loop;
+  async validators are awaited with the tool timeout.
 - Mutating and destructive handlers must be asynchronous. Synchronous
   handlers are accepted only for tools declared read-only.
 - Synchronous read-only handlers run in worker threads so they do not block
