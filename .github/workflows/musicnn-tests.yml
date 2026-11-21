@@ -28,4 +28,7 @@ jobs:
         run: |
           ruff check body_of_secrets/sensory/musicnn_msd.py \
             body_of_secrets/sensory/musicnn_frontend.py \
-            tests/test_musicnn_loader.py tests/test_musicnn_frontend.py
+            body_of_secrets/sensory/msd_tags.py \
+            body_of_secrets/sensory/musicnn_adapters.py \
+            tests/test_musicnn_loader.py tests/test_musicnn_frontend.py \
+            tests/test_musicnn_adapters.py tests/test_musicnn_offline.py

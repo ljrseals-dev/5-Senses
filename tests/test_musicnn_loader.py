@@ -5,7 +5,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from body_of_secrets.sensory.musicnn_msd import MusicnnMSD, load_msd_musicnn
+from body_of_secrets.sensory.musicnn_msd import MusicnnMSD, load_msd_musicnn  # noqa: E402
 
 
 def make_checkpoint(path):

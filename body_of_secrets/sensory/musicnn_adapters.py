@@ -1,0 +1,254 @@
+"""Explicit adapters from MSD MusicNN outputs into classical 5-Senses modules.
+
+Raw model predictions remain UNKNOWN. MLP, Hopfield, and n-gram learning only
+accept labels that a caller explicitly supplies as human-confirmed.
+"""
+from __future__ import annotations
+
+import hashlib
+import math
+import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, Iterable, Mapping, Sequence
+
+from .msd_tags import MSD_TAGS
+
+if TYPE_CHECKING:
+    from body_of_secrets.archive import Archive
+    from body_of_secrets.expert import ExpertSystem
+    from body_of_secrets.language import NGramModel
+    from body_of_secrets.neural import HopfieldNetwork, MLP
+
+
+@dataclass(frozen=True)
+class TagScore:
+    index: int
+    label: str
+    probability: float
+    logit: float
+
+
+@dataclass(frozen=True)
+class MusicNNAnalysis:
+    patch_scores: tuple[tuple[TagScore, ...], ...]
+    mean_scores: tuple[TagScore, ...]
+    mean_probabilities: tuple[float, ...]
+    patch_count: int
+
+
+@dataclass(frozen=True)
+class ConfirmedTagTraining:
+    confirmation_source: str
+    confirmed_tags: tuple[str, ...]
+    loss: float | None = None
+
+
+def _validate_top_k(top_k: int) -> None:
+    if isinstance(top_k, bool) or not isinstance(top_k, int):
+        raise TypeError("top_k must be an integer")
+    if not 1 <= top_k <= len(MSD_TAGS):
+        raise ValueError("top_k must be between 1 and 50")
+
+
+def _scores(
+    probabilities: Sequence[float],
+    logits: Sequence[float],
+    top_k: int,
+) -> tuple[TagScore, ...]:
+    _validate_top_k(top_k)
+    if len(probabilities) != len(MSD_TAGS) or len(logits) != len(MSD_TAGS):
+        raise ValueError("expected exactly 50 probabilities and logits")
+    scores = [
+        TagScore(i, label, float(probabilities[i]), float(logits[i]))
+        for i, label in enumerate(MSD_TAGS)
+    ]
+    scores.sort(key=lambda item: (-item.probability, item.index))
+    return tuple(scores[:top_k])
+
+
+def predict_msd_tags(model: object, patches: object, *, top_k: int = 10) -> MusicNNAnalysis:
+    """Run local model inference and average sigmoid probabilities across patches."""
+    _validate_top_k(top_k)
+    try:
+        import torch
+    except ImportError as exc:  # pragma: no cover
+        raise ImportError("install body-of-secrets[musicnn] to run MSD inference") from exc
+
+    try:
+        parameter = next(model.parameters())  # type: ignore[attr-defined]
+    except (AttributeError, StopIteration) as exc:
+        raise TypeError("model must be a parameterized MusicNN model") from exc
+
+    batch = torch.as_tensor(patches, dtype=parameter.dtype, device=parameter.device)
+    if batch.ndim == 2:
+        batch = batch.unsqueeze(0)
+    if batch.ndim != 3 or batch.shape[0] < 1 or batch.shape[2] != 96:
+        raise ValueError("patches must have shape (patches, frames, 96)")
+    model.eval()  # type: ignore[attr-defined]
+    with torch.inference_mode():
+        raw_logits = model(batch)  # type: ignore[operator]
+        if raw_logits.ndim != 2 or raw_logits.shape != (batch.shape[0], 50):
+            raise ValueError("MusicNN model must return logits shaped (patches, 50)")
+        logits = raw_logits.float()
+        if not torch.isfinite(logits).all():
+            raise ValueError("MusicNN produced non-finite logits")
+        probabilities = torch.sigmoid(logits)
+        patch_probs = probabilities.cpu().tolist()
+        patch_logits = logits.cpu().tolist()
+        mean_probs = probabilities.mean(dim=0).cpu().tolist()
+
+    patch_scores = tuple(
+        _scores(p, l, top_k) for p, l in zip(patch_probs, patch_logits)
+    )
+    mean_logits = [
+        math.log(
+            min(max(p, 1e-7), 1.0 - 1e-7)
+            / (1.0 - min(max(p, 1e-7), 1.0 - 1e-7))
+        )
+        for p in mean_probs
+    ]
+    return MusicNNAnalysis(
+        patch_scores=patch_scores,
+        mean_scores=_scores(mean_probs, mean_logits, top_k),
+        mean_probabilities=tuple(float(p) for p in mean_probs),
+        patch_count=len(patch_probs),
+    )
+
+
+def musicnn_mlp_features(analysis: MusicNNAnalysis) -> list[float]:
+    """Return the 50 mean probabilities as MLP input features, not target labels."""
+    if len(analysis.mean_probabilities) != 50:
+        raise ValueError("analysis must contain 50 mean probabilities")
+    return list(analysis.mean_probabilities)
+
+
+def _confirmed_tags(tags: Iterable[str]) -> tuple[str, ...]:
+    if isinstance(tags, (str, bytes)):
+        raise TypeError("confirmed_tags must be an iterable of complete tag labels")
+    selected = tuple(dict.fromkeys(tags))
+    if any(not isinstance(tag, str) for tag in selected):
+        raise TypeError("confirmed tag labels must be strings")
+    unknown = sorted(set(selected) - set(MSD_TAGS))
+    if unknown:
+        raise ValueError(f"unknown MSD tags: {unknown}")
+    if not selected:
+        raise ValueError("at least one human-confirmed tag is required")
+    return selected
+
+
+def train_mlp_from_confirmed_tags(
+    mlp: MLP,
+    analysis: MusicNNAnalysis,
+    confirmed_tags: Iterable[str],
+    *,
+    confirmation_source: str,
+) -> ConfirmedTagTraining:
+    """Perform one supervised MLP step using explicit human-confirmed targets."""
+    selected = _confirmed_tags(confirmed_tags)
+    if not confirmation_source.strip():
+        raise ValueError("confirmation_source is required for provenance")
+    if mlp.n_input != 50 or mlp.n_output != 50:
+        raise ValueError("MSD adapter requires an MLP with 50 inputs and 50 outputs")
+    loss = mlp.train_step(
+        musicnn_mlp_features(analysis),
+        [1.0 if tag in selected else 0.0 for tag in MSD_TAGS],
+    )
+    return ConfirmedTagTraining(confirmation_source, selected, float(loss))
+
+
+def confirmed_hopfield_pattern(confirmed_tags: Iterable[str]) -> list[int]:
+    """Create a bipolar 50-unit pattern from human-confirmed tags only."""
+    selected = set(_confirmed_tags(confirmed_tags))
+    return [1 if label in selected else -1 for label in MSD_TAGS]
+
+
+def train_ngram_from_confirmed_tags(
+    model: NGramModel,
+    confirmed_tags: Iterable[str],
+    *,
+    confirmation_source: str,
+) -> ConfirmedTagTraining:
+    """Train the n-gram model on explicit human-confirmed tag sequences only."""
+    selected = _confirmed_tags(confirmed_tags)
+    if not confirmation_source.strip():
+        raise ValueError("confirmation_source is required for provenance")
+    model.train([" ".join(selected)])
+    return ConfirmedTagTraining(confirmation_source, selected)
+
+
+def register_musicnn_caution_rule(expert: ExpertSystem) -> bool:
+    """Register a rule that explicitly prevents model tags becoming factual claims."""
+    name = "musicnn_unverified_output"
+    if any(rule.name == name for rule in expert.rules):
+        return False
+
+    def caution(match: re.Match[str], text: str) -> str:
+        return (
+            "MSD MusicNN labels are model-generated candidate annotations, not "
+            "verified facts about the recording. Numerical parity and musical "
+            "tag quality have not been established. Human review and independent "
+            "evidence are required. [UNKNOWN]"
+        )
+
+    expert.add_rule(
+        name,
+        r"\b(MSD\s+MusicNN|MusicNN\s+tags?|music\s+tag\s+predictions?)\b",
+        caution,
+        priority=1,
+        description="Keep MusicNN outputs explicitly unverified",
+    )
+    return True
+
+
+def archive_musicnn_analysis(
+    archive: Archive,
+    analysis: MusicNNAnalysis,
+    audio_path: str | Path,
+    *,
+    checkpoint_sha256: str,
+    preprocessing: Mapping[str, object],
+) -> str:
+    """Archive an analysis with hashes and UNKNOWN status; never assert tag truth."""
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", checkpoint_sha256):
+        raise ValueError("checkpoint_sha256 must be a 64-character hex digest")
+    path = Path(audio_path)
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    digest = hashlib.sha256()
+    with path.open("rb") as audio_file:
+        for chunk in iter(lambda: audio_file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    audio_sha256 = digest.hexdigest()
+
+    lines = [
+        "MSD MusicNN model-generated candidate tags.",
+        "TRUTH_STATUS: UNKNOWN",
+        "These outputs are not human-verified musical facts.",
+        f"Patch count: {analysis.patch_count}",
+        "",
+    ]
+    if len(analysis.mean_probabilities) != len(MSD_TAGS):
+        raise ValueError("analysis must contain all 50 mean probabilities")
+    lines.extend(
+        f"{label}: {probability:.8f}"
+        for label, probability in zip(MSD_TAGS, analysis.mean_probabilities)
+    )
+    metadata = {
+        "subsystem": "ears",
+        "model": "MSD MusicNN standard",
+        "audio_sha256": audio_sha256,
+        "checkpoint_sha256": checkpoint_sha256.lower(),
+        "preprocessing": dict(preprocessing),
+        "patch_count": analysis.patch_count,
+        "truth_status": "UNKNOWN",
+        "tag_quality_validated": False,
+    }
+    return archive.import_document(
+        title=f"MSD MusicNN analysis {audio_sha256[:12]}",
+        content="\n".join(lines),
+        source=f"sha256:{audio_sha256}",
+        tags=["ears", "musicnn", "model-output", "unverified"],
+        metadata=metadata,
+        doc_id=f"musicnn_{audio_sha256[:16]}_{checkpoint_sha256[:8]}",
+    )
