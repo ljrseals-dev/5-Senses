@@ -129,7 +129,7 @@ preprocessing a local waveform, and running inference.
 ## Tag quality is separate
 
 The human-reviewed validation-set protocol is documented in
-[ EARS_TAG_VALIDATION.md ](EARS_TAG_VALIDATION.md). No track set is included
+[EARS_TAG_VALIDATION.md](EARS_TAG_VALIDATION.md). No track set is included
 yet.
 
 Numerical parity does not establish musical usefulness. No Expert rule may
