@@ -34,6 +34,6 @@ jobs:
             echo "No changed Python files."
           else
             while IFS= read -r file; do
-              python -m ruff check "$file"
+              python -m ruff check --select E4,E7,E9,F "$file"
             done <<< "$changed"
           fi
