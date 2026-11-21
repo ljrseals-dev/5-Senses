@@ -129,6 +129,11 @@ def musicnn_mlp_features(analysis: MusicNNAnalysis) -> list[float]:
     """Return the 50 mean probabilities as MLP input features, not target labels."""
     if len(analysis.mean_probabilities) != 50:
         raise ValueError("analysis must contain 50 mean probabilities")
+    if any(
+        not math.isfinite(value) or not 0.0 <= value <= 1.0
+        for value in analysis.mean_probabilities
+    ):
+        raise ValueError("analysis probabilities must be finite values in [0, 1]")
     return list(analysis.mean_probabilities)
 
 
@@ -228,6 +233,12 @@ def archive_musicnn_analysis(
         r"[0-9a-fA-F]{40,64}", integration_commit_sha
     ):
         raise ValueError("provenance must contain an integration commit SHA")
+    for hash_name in ("preprocessing_sha256", "tag_vocabulary_sha256"):
+        hash_value = provenance.get(hash_name)
+        if not isinstance(hash_value, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", hash_value):
+            raise ValueError(f"provenance must contain a valid {hash_name}")
+    if not isinstance(provenance.get("preprocessing"), Mapping):
+        raise ValueError("provenance must include the resolved preprocessing configuration")
     if provenance.get("truth_status") != "UNKNOWN":
         raise ValueError("MusicNN archive records must remain UNKNOWN")
     for flag in (
@@ -240,6 +251,13 @@ def archive_musicnn_analysis(
     path = Path(audio_path)
     if not path.is_file():
         raise FileNotFoundError(path)
+    if analysis.patch_count < 1 or len(analysis.mean_probabilities) != 50:
+        raise ValueError("analysis must contain at least one patch and all 50 scores")
+    if any(
+        not math.isfinite(value) or not 0.0 <= value <= 1.0
+        for value in analysis.mean_probabilities
+    ):
+        raise ValueError("analysis probabilities must be finite values in [0, 1]")
     digest = hashlib.sha256()
     with path.open("rb") as audio_file:
         for chunk in iter(lambda: audio_file.read(1024 * 1024), b""):
