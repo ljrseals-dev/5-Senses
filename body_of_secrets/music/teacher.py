@@ -28,15 +28,37 @@ class LoggedTeacher:
         if timeout<=0 or retries<0: raise ValueError("timeout must be positive and retries non-negative")
         self.teacher,self.log_path,self.timeout,self.retries=teacher,Path(log_path),timeout,retries
         self.lock=threading.Lock()
-    def _call(self,prompt):
-        result=queue.Queue(maxsize=1)
+    def _append_log(self,prompt_hash,raw,error=None):
+        self.log_path.parent.mkdir(parents=True,exist_ok=True)
+        record={"timestamp":datetime.now(timezone.utc).isoformat(),"prompt_hash":prompt_hash,
+                "response":raw,"error":error}
+        with self.lock,self.log_path.open("a",encoding="utf-8",newline="\n") as stream:
+            stream.write(json.dumps(record,ensure_ascii=False,sort_keys=True)+"\n")
+    def _call(self,prompt,prompt_hash):
+        result=queue.Queue(maxsize=1); state_lock=threading.Lock(); state={"timed_out":False}
         def invoke():
-            try: result.put((True,self.teacher.complete(prompt)))
-            except Exception as exc: result.put((False,exc))
+            try:
+                value=self.teacher.complete(prompt); ok=True
+            except Exception as exc:
+                value=exc; ok=False
+            with state_lock:
+                if state["timed_out"]:
+                    raw=value if ok and isinstance(value,str) else ""
+                    error="late_response_after_timeout" if ok else f"late_error_after_timeout: {type(value).__name__}"
+                    self._append_log(prompt_hash,raw,error)
+                else:
+                    result.put((ok,value))
         # A daemon worker ensures a hung optional plugin cannot hold process shutdown.
         threading.Thread(target=invoke,name="music-teacher",daemon=True).start()
-        try: ok,value=result.get(timeout=self.timeout)
-        except queue.Empty as exc: raise TimeoutError("music teacher timed out") from exc
+        try:
+            ok,value=result.get(timeout=self.timeout)
+        except queue.Empty as exc:
+            with state_lock:
+                state["timed_out"]=True
+                try:
+                    ok,value=result.get_nowait()
+                except queue.Empty:
+                    raise TimeoutError("music teacher timed out") from exc
         if not ok: raise value
         if not isinstance(value,str): raise TypeError("teacher must return text")
         return value
@@ -44,16 +66,12 @@ class LoggedTeacher:
         prompt_hash=hashlib.sha256(prompt.encode()).hexdigest(); raw=""; error=None
         for _ in range(self.retries+1):
             try:
-                raw=self._call(prompt); error=None; break
+                raw=self._call(prompt,prompt_hash); error=None; break
             except TimeoutError as exc:
                 error=f"TimeoutError: {exc}"
-                break  # cannot cancel a running provider request safely; avoid duplicate billable retries
+                break  # cannot cancel an in-flight request safely; avoid duplicate billable retries
             except Exception as exc:
                 error=f"{type(exc).__name__}: {exc}"
-        self.log_path.parent.mkdir(parents=True,exist_ok=True)
-        record={"timestamp":datetime.now(timezone.utc).isoformat(),"prompt_hash":prompt_hash,
-                "response":raw,"error":error}
-        with self.lock,self.log_path.open("a",encoding="utf-8",newline="\n") as stream:
-            stream.write(json.dumps(record,ensure_ascii=False,sort_keys=True)+"\n")
+        self._append_log(prompt_hash,raw,error)
         if error: raise RuntimeError("llm_unavailable: "+error)
         return raw
