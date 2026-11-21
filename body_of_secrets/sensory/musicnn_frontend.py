@@ -8,6 +8,7 @@ training pipeline; see docs/EARS_MSD_CHECKPOINT.md.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+import math
 from pathlib import Path
 
 import librosa
@@ -44,6 +45,12 @@ class MusicNNPreprocessConfig:
             raise ValueError("MSD MusicNN requires exactly 96 mel bins")
         if not 0 <= self.fmin < self.fmax <= self.sample_rate / 2:
             raise ValueError("mel frequency bounds must fit within Nyquist")
+        numeric = (
+            self.fmin, self.fmax, self.power, self.log_multiplier,
+            self.log_offset, self.patch_seconds,
+        )
+        if not all(math.isfinite(value) for value in numeric):
+            raise ValueError("frontend numeric parameters must be finite")
         if self.power <= 0 or self.log_multiplier <= 0 or self.log_offset <= 0:
             raise ValueError("power and log-compression constants must be positive")
         if self.patch_seconds <= 0:
@@ -133,6 +140,8 @@ def make_patches(
         raise ValueError("logmel must have shape (frames, 96)")
     if features.shape[0] == 0:
         raise ValueError("logmel contains no frames")
+    if not np.isfinite(features).all():
+        raise ValueError("logmel contains non-finite values")
 
     frames = (
         librosa.time_to_frames(
@@ -146,8 +155,8 @@ def make_patches(
     if overlap_seconds is None:
         overlap_frames = frames
     else:
-        if overlap_seconds <= 0:
-            raise ValueError("overlap_seconds must be positive")
+        if not math.isfinite(overlap_seconds) or overlap_seconds <= 0:
+            raise ValueError("overlap_seconds must be finite and positive")
         overlap_frames = librosa.time_to_frames(
             overlap_seconds,
             sr=config.sample_rate,
