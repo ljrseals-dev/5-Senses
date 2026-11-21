@@ -12,6 +12,7 @@ from body_of_secrets.archive import Archive
 from body_of_secrets.brain import Engine
 from body_of_secrets.cpp_debug import analyze_cpp_file, report_json
 from body_of_secrets.cpp_corpus import import_manifest, load_manifest
+from body_of_secrets.cpp_harness import run_fixture
 from body_of_secrets.expert import build_default_expert
 from body_of_secrets.language import NGramModel
 from body_of_secrets.memory import Memory
@@ -208,6 +209,49 @@ def _cmd_cpp_corpus(args: argparse.Namespace) -> int:
 
 
 
+def _cmd_verify_cpp(args: argparse.Namespace) -> int:
+    """Compile/run one allow-listed C++ fixture and archive its evidence."""
+    try:
+        result = run_fixture(
+            args.fixture,
+            compiler_name=args.compiler,
+            manifest_path=args.manifest,
+        )
+        statuses = [item["outcome"] for item in result["runs"]]
+        doc_id = (
+            "cppverify_"
+            + result["fixture_id"].replace(".", "_").replace("-", "_")
+            + "_" + args.compiler.replace("+", "p")
+            + "_" + result["source_sha256"][:12]
+        )
+        with Archive(args.db) as archive:
+            archive.import_document(
+                title=f"C++ verification {result['fixture_id']}",
+                content=json.dumps(result, indent=2, sort_keys=True),
+                source=f"cpp-fixture:{result['fixture_id']}",
+                tags=["cpp-verification", "fixture", args.compiler, *result["tags"]],
+                metadata={
+                    "fixture_id": result["fixture_id"],
+                    "source_sha256": result["source_sha256"],
+                    "verification_status": statuses,
+                    "compiler": args.compiler,
+                    "compiler_version": result["compiler_version"],
+                    "standard": result["standard"],
+                    "execution_performed": result["execution_performed"],
+                    "external_source_code_included": False,
+                },
+                doc_id=doc_id,
+            )
+        result["archive_document_id"] = doc_id
+        print(json.dumps(result, indent=2, sort_keys=True) if args.json else
+              f"{result['fixture_id']}: {'PASS' if result['passed'] else 'FAIL'} "
+              f"({', '.join(statuses)}); archived as {doc_id}")
+        return 0 if result["passed"] else 1
+    except (OSError, ValueError, RuntimeError, KeyError, TypeError) as exc:
+        print(f"C++ verification failed: {exc}", file=sys.stderr)
+        return 2
+
+
 def _cmd_status(args: argparse.Namespace) -> int:
     archive = Archive(args.db)
     print(f"BODY OF SECRETS v{__version__}")
@@ -282,6 +326,15 @@ def main(argv: list[str] | None = None) -> int:
     p_corpus.add_argument("--manifest", default="data/cpp_reference_corpora.json")
     p_corpus.add_argument("--dry-run", action="store_true", help="Validate and preview without Archive writes")
     p_corpus.set_defaults(func=_cmd_cpp_corpus)
+
+    p_verify = sub.add_parser(
+        "verify-cpp", help="Compile and verify one allow-listed C++ fixture"
+    )
+    p_verify.add_argument("--fixture", required=True, help="Fixture ID from the checked-in manifest")
+    p_verify.add_argument("--compiler", choices=["g++", "clang++"], default="g++")
+    p_verify.add_argument("--manifest", default="tests/fixtures/cpp/manifest.json")
+    p_verify.add_argument("--json", action="store_true")
+    p_verify.set_defaults(func=_cmd_verify_cpp)
 
     p_st = sub.add_parser("status", help="Show system status")
     p_st.set_defaults(func=_cmd_status)
