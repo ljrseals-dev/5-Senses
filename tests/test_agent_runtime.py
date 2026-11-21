@@ -221,7 +221,10 @@ def test_backend_does_not_retry_after_partial_output():
 
 
 def test_invalid_context_compactor_result_fails_cleanly():
-    backend = FakeBackend([[ModelEvent("complete")]])
+    backend = FakeBackend([
+        [ModelEvent("tool_call", tool_call=ToolCall("first", "missing", {}))],
+        [ModelEvent("complete")],
+    ])
     runtime = AgentRuntime(backend, compact_after_messages=2, compactor=lambda messages: "bad")
     events = asyncio.run(collect(runtime))
     assert events[-1].kind == "state"
