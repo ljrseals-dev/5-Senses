@@ -76,7 +76,7 @@ class ToolSpec:
     is_read_only: bool = False
     is_concurrency_safe: bool = False
     is_destructive: bool = False
-    validate_input: Callable[[JsonObject], None] | None = None
+    validate_input: Callable[[JsonObject], Any | Awaitable[Any]] | None = None
     input_schema: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -569,7 +569,22 @@ class AgentRuntime:
     async def _invoke(self, tool: ToolSpec, arguments: Mapping[str, Any]) -> ToolResult:
         try:
             if tool.validate_input is not None:
-                tool.validate_input(arguments)
+                validator = tool.validate_input
+                if inspect.iscoroutinefunction(validator) or inspect.iscoroutinefunction(
+                    getattr(validator, "__call__", None)
+                ):
+                    await asyncio.wait_for(
+                        validator(arguments), timeout=self.tool_timeout_seconds
+                    )
+                else:
+                    validation_result = await asyncio.wait_for(
+                        asyncio.to_thread(validator, arguments),
+                        timeout=self.tool_timeout_seconds,
+                    )
+                    if inspect.isawaitable(validation_result):
+                        await asyncio.wait_for(
+                            validation_result, timeout=self.tool_timeout_seconds
+                        )
             if inspect.iscoroutinefunction(tool.handler) or inspect.iscoroutinefunction(
                 getattr(tool.handler, "__call__", None)
             ):
