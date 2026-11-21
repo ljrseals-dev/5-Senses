@@ -50,7 +50,7 @@ class LoggedTeacher:
         def invoke():
             try:
                 value=self.teacher.complete(prompt); ok=True
-            except Exception as exc:  # noqa: BLE001 - provider plugins are an untrusted boundary
+            except Exception as exc:  # noqa: BLE001 - provider plugins are an untrusted boundary  # noqa: BLE001 - provider plugins are an untrusted boundary
                 value=exc; ok=False
             try:
                 with state_lock:
@@ -91,7 +91,7 @@ class LoggedTeacher:
             except TimeoutError as exc:
                 error=f"TimeoutError: {exc}"
                 break  # cannot cancel an in-flight request safely; avoid duplicate billable retries
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - provider plugins are an untrusted boundary
                 error=f"{type(exc).__name__}: {exc}"
         self._append_log(prompt_hash,raw,error)
         if error: raise RuntimeError("llm_unavailable: "+error)
