@@ -179,4 +179,7 @@ def build_default_expert() -> ExpertSystem:
     es.add_rule("covid", r"\b(COVID|COVID-19|SARS-CoV-2|SARSCoV2|coronavirus pandemic)\b",
                 covid_info, priority=12, description="SARS-CoV-2 origin consensus")
 
+    from body_of_secrets.cpp_expert import register_cpp_rules
+    register_cpp_rules(es)
+
     return es
