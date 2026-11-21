@@ -8,6 +8,7 @@ from pathlib import Path
 
 from body_of_secrets.neural import HopfieldNetwork
 
+
 def project_motif(motif: tuple[str, ...], dimensions: int = 128) -> list[int]:
     if not isinstance(dimensions,int) or isinstance(dimensions,bool) or dimensions < 8: raise ValueError("dimensions must be an integer >= 8")
     seed = " ".join(motif).encode()
@@ -62,7 +63,7 @@ class MotifMemory:
         if (not isinstance(data.get("max_patterns"),int) or isinstance(data.get("max_patterns"),bool)
             or not isinstance(data.get("dimensions"),int) or isinstance(data.get("dimensions"),bool)
             or not isinstance(data.get("patterns"),list)):
-            raise ValueError("invalid motif snapshot")
+            raise TypeError("invalid motif snapshot")
         obj=cls(data["max_patterns"],data["dimensions"]); obj.patterns=data["patterns"]
         if len(obj.patterns)>obj.max_patterns: raise ValueError("pattern capacity exceeded")
         for pattern in obj.patterns:
