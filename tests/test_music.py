@@ -9,6 +9,7 @@ from body_of_secrets.music.ngram import MusicNGramModel
 from body_of_secrets.music.snapshots import SnapshotStore
 from body_of_secrets.music.tokens import validate_tokens
 from body_of_secrets.music.training import train_music
+from body_of_secrets.music.teacher import LoggedTeacher
 from body_of_secrets.music.validator import evaluate_uncertainty
 def _vlq(n):
     out=[n&127]; n>>=7
@@ -85,6 +86,14 @@ class _Teacher:
         self.calls+=1
         assert "P072 D004 P074 D004" in prompt
         return "P064 D004 P065 D004"
+
+def test_teacher_response_is_logged_with_prompt_hash(tmp_path):
+    class Teacher:
+        def complete(self,prompt): return "P060 D004 P062 D004"
+    log=tmp_path/"llm_responses.log"
+    assert LoggedTeacher(Teacher(),log).complete("teacher prompt")=="P060 D004 P062 D004"
+    record=json.loads(log.read_text().splitlines()[0])
+    assert record["response"]=="P060 D004 P062 D004" and len(record["prompt_hash"])==64
 
 def test_active_teacher_sample_is_conditioned_on_context(tmp_path):
     seed=tmp_path/"seed"; seed.mkdir()
