@@ -14,6 +14,7 @@ from body_of_secrets.expert import build_default_expert
 from body_of_secrets.language import NGramModel
 from body_of_secrets.memory import Memory
 from body_of_secrets.neural import demo_hopfield, demo_xor
+from body_of_secrets.scouting.cleaning import clean_directory
 
 
 def _cmd_ask(args: argparse.Namespace) -> int:
@@ -75,6 +76,30 @@ def _cmd_import(args: argparse.Namespace) -> int:
         return 1
     print(f"Archive now contains {archive.count()} document(s).")
     archive.close()
+    return 0
+
+
+def _cmd_clean(args: argparse.Namespace) -> int:
+    results = clean_directory(
+        args.source_dir,
+        args.output_dir,
+        review_dir=args.review_dir,
+        iterations=args.iterations,
+        max_file_bytes=args.max_file_bytes,
+        apply_em_corrections=args.apply_em_corrections,
+    )
+    accepted = sum(
+        1 for result in results for edit in result.edits
+        if edit.get("kind") == "em_ocr_correction"
+    )
+    reviews = sum(
+        1 for result in results for proposal in result.proposals
+        if proposal.action == "REVIEW"
+    )
+    print(f"Cleaned {len(results)} text file(s).")
+    print(f"High-confidence EM corrections: {accepted}")
+    print(f"Review proposals: {reviews}")
+    print(f"Manifest: {Path(args.output_dir) / 'cleaning_manifest.json'}")
     return 0
 
 
@@ -179,6 +204,17 @@ def main(argv: list[str] | None = None) -> int:
     p_imp.add_argument("path", help="File or directory to import")
     p_imp.add_argument("--source", default=None)
     p_imp.set_defaults(func=_cmd_import)
+
+    p_clean = sub.add_parser("clean", help="Conservatively clean a text corpus into a new directory")
+    p_clean.add_argument("source_dir", help="Immutable raw text corpus directory")
+    p_clean.add_argument("output_dir", help="New cleaned output directory")
+    p_clean.add_argument("--review-dir", default=None, help="Optional JSONL review queue directory")
+    p_clean.add_argument("--iterations", type=int, default=12, help="Corpus-local EM iterations")
+    p_clean.add_argument("--max-file-bytes", type=int, default=25 * 1024 * 1024,
+                         help="Reject larger individual files before processing")
+    p_clean.add_argument("--apply-em-corrections", action="store_true",
+                         help="Apply high-confidence EM proposals (review-only by default)")
+    p_clean.set_defaults(func=_cmd_clean)
 
     p_search = sub.add_parser("search", help="BM25 search over the Archive")
     p_search.add_argument("query")
