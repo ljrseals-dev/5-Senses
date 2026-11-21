@@ -308,7 +308,7 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
         with manifest_path.open("x", encoding="utf-8") as stream:
             manifest_created = True
             json.dump(manifest, stream, indent=2, ensure_ascii=False)
-            stream.write("\\n")
+            stream.write("\n")
     except Exception:
         # Roll back only files this invocation successfully created. Never
         # remove a path that appeared concurrently after our preflight.
