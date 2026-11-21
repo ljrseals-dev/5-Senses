@@ -46,7 +46,7 @@ def search_huggingface_datasets(query: str, *, limit: int = 20,
     params = urllib.parse.urlencode({"search": query, "limit": limit})
     payload = _get_json(f"https://huggingface.co/api/datasets?{params}", timeout)
     if not isinstance(payload, list):
-        raise ValueError("unexpected dataset catalog response")
+        raise TypeError("unexpected dataset catalog response")
     candidates = []
     for item in payload:
         if not isinstance(item, dict) or not isinstance(item.get("id"), str) or not item["id"].strip():
@@ -72,10 +72,10 @@ def search_internet_archive(query: str, *, limit: int = 20,
     }, doseq=True)
     payload = _get_json(f"https://archive.org/advancedsearch.php?{params}", timeout)
     if not isinstance(payload, dict):
-        raise ValueError("unexpected Internet Archive response")
+        raise TypeError("unexpected Internet Archive response")
     response = payload.get("response")
     if not isinstance(response, dict) or not isinstance(response.get("docs", []), list):
-        raise ValueError("unexpected Internet Archive response documents")
+        raise TypeError("unexpected Internet Archive response documents")
     candidates = []
     for item in response.get("docs", []):
         if not isinstance(item, dict):
