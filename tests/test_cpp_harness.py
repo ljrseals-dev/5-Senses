@@ -98,11 +98,8 @@ def test_fixture_reproduces_expected_compiler_or_sanitizer_result(fixture_id, ex
         pytest.skip("g++ is not installed")
     result = run_fixture(fixture_id, compiler_name=COMPILER, manifest_path=MANIFEST)
     assert result["expected"] == expected
-    assert result["passed"], json.dumps(result, indent=2)
     assert len(result["source_sha256"]) == 64
     assert result["external_source_code_included"] is False
-    if expected in {"COMPILE_FAIL", "LINK_FAIL"}:
-        assert result["runs"][0]["failure_signature_matched"] is True
     if expected == "BEHAVIOR_REPRODUCED":
         assert result["passed"] is True
         assert result["runs"][0]["outcome"] == "BEHAVIOR_REPRODUCED"
@@ -116,8 +113,12 @@ def test_fixture_reproduces_expected_compiler_or_sanitizer_result(fixture_id, ex
         outcome = result["runs"][0]["outcome"]
         assert outcome in {"CLEAN", "SANITIZER_UNAVAILABLE"}
         assert result["passed"] is (outcome == "CLEAN")
-    elif expected == "CLEAN":
-        assert [run["outcome"] for run in result["runs"]] == ["CLEAN", "CLEAN"]
+    else:
+        assert result["passed"], json.dumps(result, indent=2)
+        if expected in {"COMPILE_FAIL", "LINK_FAIL"}:
+            assert result["runs"][0]["failure_signature_matched"] is True
+        if expected == "CLEAN":
+            assert [run["outcome"] for run in result["runs"]] == ["CLEAN", "CLEAN"]
 
 
 def test_verify_cpp_cli_archives_the_compiler_evidence(tmp_path):
