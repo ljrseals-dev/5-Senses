@@ -1,4 +1,5 @@
 """Idempotent corpus writer with source-aware deduplication and provenance."""
+# ruff: noqa: E701, E702, E704
 from __future__ import annotations
 import hashlib,json,threading
 from datetime import datetime,timezone
