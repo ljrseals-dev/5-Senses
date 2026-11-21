@@ -85,6 +85,8 @@ def _midi(path: Path) -> str:
             elif (kind == 128 or (kind == 144 and velocity == 0)) and active[key]:
                 start = active[key].popleft()
                 if tick > start: notes.append((start, tick, pitch))
+    if pos != len(data):
+        raise ValueError("trailing data after declared MIDI tracks")
     grouped = defaultdict(list)
     for start, end, pitch in notes: grouped[start].append((pitch, end-start))
     tokens, previous_end = [], 0
@@ -182,7 +184,7 @@ def encode_directory(directory: str | Path, output: str | Path | None = None) ->
     root = Path(directory)
     if not root.is_dir(): raise NotADirectoryError(root)
     records = []
-    for path in sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in {".mid", ".midi", ".abc"}):
+    for path in sorted(p for p in root.rglob("*") if p.is_file() and not p.is_symlink() and p.suffix.lower() in {".mid", ".midi", ".abc"}):
         tokens = encode_file(path)
         if tokens: records.append({"source": path.relative_to(root).as_posix(), "tokens": tokens})
     if output is not None:
