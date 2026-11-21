@@ -17,7 +17,7 @@ from typing import Any
 
 DEFAULT_MANIFEST = Path("tests/fixtures/cpp/manifest.json")
 ALLOWED_STANDARDS = {"c++98", "c++11", "c++14", "c++17", "c++20"}
-ALLOWED_EXPECTED = {"COMPILE_FAIL", "LINK_FAIL", "ASAN_FINDING", "UBSAN_FINDING", "CLEAN"}
+ALLOWED_EXPECTED = {"COMPILE_FAIL", "LINK_FAIL", "ASAN_FINDING", "UBSAN_FINDING", "TSAN_FINDING", "BEHAVIOR_REPRODUCED", "CLEAN"}
 ALLOWED_SANITIZERS = {"address", "undefined", "thread"}
 OUTPUT_LIMIT = 24_000
 
@@ -82,6 +82,10 @@ def load_fixture_manifest(path: str | Path = DEFAULT_MANIFEST) -> tuple[Path, di
             raise ValueError(f"{fixture_id}: ASAN fixture must request only address sanitizer")
         if fixture["expected"] == "UBSAN_FINDING" and sanitizers != ["undefined"]:
             raise ValueError(f"{fixture_id}: UBSAN fixture must request only undefined sanitizer")
+        if fixture["expected"] == "TSAN_FINDING" and sanitizers != ["thread"]:
+            raise ValueError(f"{fixture_id}: TSAN fixture must request only thread sanitizer")
+        if fixture["expected"] == "BEHAVIOR_REPRODUCED" and sanitizers:
+            raise ValueError(f"{fixture_id}: behavior negative controls must not request sanitizers")
         if fixture["expected"] == "CLEAN" and not sanitizers:
             raise ValueError(f"{fixture_id}: clean controls must run under at least one sanitizer")
 
@@ -282,6 +286,11 @@ def run_fixture(fixture_id: str, *, compiler_name: str = "g++",
                 source, compiler, fixture["standard"], sanitizer,
                 fixture["timeout_seconds"], work,
             )
+            if expected == "BEHAVIOR_REPRODUCED":
+                if run["outcome"] == "CLEAN":
+                    run["outcome"] = "BEHAVIOR_REPRODUCED"
+                elif run["outcome"] == "EXECUTION_FAIL":
+                    run["outcome"] = "BEHAVIOR_NOT_REPRODUCED"
             run["sanitizer"] = sanitizer
             runs.append(run)
 
@@ -290,7 +299,7 @@ def run_fixture(fixture_id: str, *, compiler_name: str = "g++",
     if expected == "CLEAN":
         expected_for_run = "CLEAN"
     passed = bool(runs) and all(run["outcome"] == expected_for_run for run in runs)
-    if expected in {"ASAN_FINDING", "UBSAN_FINDING"}:
+    if expected in {"ASAN_FINDING", "UBSAN_FINDING", "TSAN_FINDING"}:
         passed = len(runs) == 1 and runs[0]["outcome"] == expected
     return {
         "schema_version": 1,
