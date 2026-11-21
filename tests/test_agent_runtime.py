@@ -244,6 +244,18 @@ def test_context_fallback_preserves_initial_user_prompt():
     last_messages = backend.calls[-1][0]
     assert any(m.get("role") == "user" and m.get("content") == "original request"
                for m in last_messages)
+    declared_ids = {
+        call["id"]
+        for message in last_messages
+        if message.get("role") == "assistant"
+        for call in message.get("tool_calls", [])
+    }
+    result_ids = {
+        message["tool_call_id"]
+        for message in last_messages
+        if message.get("role") == "tool"
+    }
+    assert result_ids == declared_ids
 
 
 def test_invalid_model_event_is_reported_as_backend_failure():
