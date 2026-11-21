@@ -6,6 +6,7 @@ import json
 import math
 from datetime import datetime, timezone
 from pathlib import Path
+
 from .corpus import CorpusWriter
 from .encoder import encode_directory
 from .hopfield import MotifMemory
