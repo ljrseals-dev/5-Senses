@@ -52,11 +52,14 @@ class SnapshotStore:
         if not isinstance(version,str) or not version.startswith("v") or not version[1:].isdigit(): raise ValueError("invalid snapshot version")
         directory=self.root/version
         metadata=json.loads((directory/"metadata.json").read_text(encoding="utf-8"))
-        if metadata.get("schema")!=1 or metadata.get("version")!=version: raise ValueError("snapshot metadata mismatch")
+        if not isinstance(metadata,dict) or metadata.get("schema")!=1 or metadata.get("version")!=version:
+            raise ValueError("snapshot metadata mismatch")
         expected_files={"ngram_music.json","hopfield_patterns.json","corpus.txt","provenance.jsonl"}
-        if set(metadata.get("sha256",{}))!=expected_files: raise ValueError("snapshot file manifest mismatch")
-        for filename,expected in metadata["sha256"].items():
-            if sha256_file(directory/filename)!=expected: raise ValueError(f"snapshot integrity failure: {filename}")
+        hashes=metadata.get("sha256")
+        if not isinstance(hashes,dict) or set(hashes)!=expected_files:
+            raise ValueError("snapshot file manifest mismatch")
+        for filename,expected in hashes.items():
+            if not isinstance(expected,str) or len(expected)!=64 or sha256_file(directory/filename)!=expected: raise ValueError(f"snapshot integrity failure: {filename}")
         if (directory/"corpus_hash.txt").read_text(encoding="ascii").strip()!=metadata["sha256"]["corpus.txt"]:
             raise ValueError("snapshot corpus hash sidecar mismatch")
         return metadata
