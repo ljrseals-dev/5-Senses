@@ -8,7 +8,6 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-
 _TOKEN_RE = re.compile(r"[a-z0-9']+", re.IGNORECASE)
 
 
