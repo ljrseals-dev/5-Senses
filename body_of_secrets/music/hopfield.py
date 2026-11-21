@@ -1,9 +1,11 @@
 """Deterministic motif vectors and bounded Hopfield-compatible memory."""
-# ruff: noqa: E401, E701, E702, E704
 from __future__ import annotations
-import hashlib, json
+
+import hashlib
+import json
 from collections import Counter
 from pathlib import Path
+
 from body_of_secrets.neural import HopfieldNetwork
 
 def project_motif(motif: tuple[str, ...], dimensions: int = 128) -> list[int]:
