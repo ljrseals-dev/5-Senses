@@ -316,3 +316,51 @@ def test_tool_input_schema_is_exposed_to_backend():
 def test_invalid_tool_input_schema_type_is_rejected():
     with pytest.raises(TypeError, match="input_schema"):
         ToolSpec("lookup", lambda args: "ok", input_schema=["not", "a", "mapping"])
+
+
+
+def test_async_tool_timeout_is_returned_without_crashing_session():
+    async def slow_lookup(args):
+        await asyncio.sleep(0.05)
+        return "late"
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec("lookup", slow_lookup))
+    backend = FakeBackend([
+        [ModelEvent("tool_call", tool_call=ToolCall("a", "lookup", {}))],
+        [ModelEvent("text", text="continued"), ModelEvent("complete")],
+    ])
+    events = asyncio.run(collect(AgentRuntime(
+        backend, registry, tool_timeout_seconds=0.005
+    )))
+    result = next(e for e in events if e.kind == "tool_result")
+    assert result.data["status"] == "TIMEOUT"
+    assert events[-1].data["text"] == "continued"
+
+
+def test_model_idle_timeout_fails_and_closes_backend_stream():
+    class SlowBackend:
+        def __init__(self):
+            self.closed = False
+        async def stream(self, messages, *, static_prompt, dynamic_prompt, tools):
+            try:
+                await asyncio.sleep(0.05)
+                yield ModelEvent("complete")
+            finally:
+                self.closed = True
+
+    backend = SlowBackend()
+    events = asyncio.run(collect(AgentRuntime(
+        backend, model_idle_timeout_seconds=0.005, max_backend_retries=0
+    )))
+    assert backend.closed is True
+    assert events[-1].data["status"] == "FAILED"
+
+
+def test_tool_schema_is_copied_and_must_be_json_compatible():
+    schema = {"type": "object", "properties": {"q": {"type": "string"}}}
+    tool = ToolSpec("lookup", lambda args: "ok", input_schema=schema)
+    schema["properties"]["q"]["type"] = "integer"
+    assert tool.input_schema["properties"]["q"]["type"] == "string"
+    with pytest.raises(ValueError, match="JSON-compatible"):
+        ToolSpec("bad", lambda args: "ok", input_schema={"bad": object()})
