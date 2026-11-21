@@ -82,6 +82,8 @@ def build_musicnn_provenance(
     # Validate canonical serialization before recording the configuration.
     frontend_sha = _canonical_sha256(frontend)
     checkpoint = inspect_checkpoint_dtypes(checkpoint_path)
+    if checkpoint["tensor_count"] != 75:
+        raise ValueError("expected the standard MSD MusicNN checkpoint with 75 tensors")
     tags_sha = _canonical_sha256(list(MSD_TAGS))
 
     running = checkpoint["batch_norm_running_stats"]
