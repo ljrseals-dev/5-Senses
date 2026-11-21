@@ -14,6 +14,7 @@ def main(argv=None):
     tr.add_argument("--order",type=int,default=5); tr.add_argument("--iterations",type=int,default=0)
     tr.add_argument("--teacher-plugin"); tr.add_argument("--timeout",type=float,default=30.)
     tr.add_argument("--retries",type=int,default=1); tr.add_argument("--entropy-threshold",type=float,default=2.)
+    tr.add_argument("--holdout",help="Optional token corpus for holdout perplexity metrics")
     pred=sub.add_parser("predict"); pred.add_argument("--work-dir",default="music_data")
     pred.add_argument("--context",required=True); pred.add_argument("--limit",type=int,default=8)
     rb=sub.add_parser("rollback"); rb.add_argument("version"); rb.add_argument("--work-dir",default="music_data")
@@ -29,7 +30,7 @@ def main(argv=None):
                                   timeout=args.timeout,retries=args.retries)
         print(train_music(args.source,work_dir=args.work_dir,order=args.order,
                           max_iterations=args.iterations,teacher=teacher,
-                          entropy_threshold=args.entropy_threshold)); return 0
+                          entropy_threshold=args.entropy_threshold,holdout_corpus=args.holdout)); return 0
     store=SnapshotStore(Path(args.work_dir)/"snapshots")
     if args.command=="predict":
         model,_=store.load(); print(json.dumps(model.continuations(args.context,args.limit),indent=2)); return 0
