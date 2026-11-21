@@ -52,23 +52,30 @@ def normalize_layout(text: str) -> str:
     """Apply reversible, content-neutral Unicode and whitespace cleanup only."""
     text = unicodedata.normalize("NFC", text.replace("\r\n", "\n").replace("\r", "\n"))
     text = text.replace("\x00", "")
+    # Preserve Unicode format characters (notably ZWJ/ZWNJ and bidi marks):
+    # deleting them can change the meaning or rendering of otherwise valid text.
     text = "".join(
         ch for ch in text
-        if ch in "\n\t" or unicodedata.category(ch) not in {"Cc", "Cf"}
+        if ch in "\n\t" or unicodedata.category(ch) != "Cc"
     )
-    lines = [_SPACE_RE.sub(" ", line).rstrip() for line in text.split("\n")]
-    # Collapse runs of blank lines but preserve paragraph boundaries.
+    has_trailing_newline = text.endswith("\n")
+    lines = text.split("\n")
+    if has_trailing_newline:
+        lines.pop()
+    lines = [_SPACE_RE.sub(" ", line).rstrip() for line in lines]
+    # Collapse repeated blank lines without stripping leading/trailing content.
     output: list[str] = []
     blank = False
     for line in lines:
         if not line.strip():
-            if output and not blank:
+            if not blank:
                 output.append("")
             blank = True
         else:
             output.append(line)
             blank = False
-    return "\n".join(output).strip() + ("\n" if text.endswith("\n") else "")
+    cleaned = "\n".join(output)
+    return cleaned + ("\n" if has_trailing_newline else "")
 
 
 def _token_candidates(token: str, vocabulary: set[str]) -> set[str]:
@@ -294,7 +301,7 @@ def clean_directory(source_dir: str | Path, destination_dir: str | Path, *,
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     with manifest_path.open("x", encoding="utf-8") as stream:
         json.dump(manifest, stream, indent=2, ensure_ascii=False)
-        stream.write("\\n")
+        stream.write("\n")
     return results
 
 
@@ -338,14 +345,32 @@ def clean_file(source: str | Path, destination: str | Path, *,
             edits.append({"kind": "em_ocr_correction", "before": observed,
                           "after": candidate, "reason": "high-confidence EM proposal"})
         cleaned = corrected
+    if review is not None and review.resolve() == dst.resolve():
+        raise ValueError("review_path and destination must be different files")
     dst.parent.mkdir(parents=True, exist_ok=True)
-    dst.write_text(cleaned, encoding="utf-8", newline="")
     if review is not None:
         review.parent.mkdir(parents=True, exist_ok=True)
-        review.write_text(
-            "".join(json.dumps(asdict(p), ensure_ascii=False) + "\n" for p in proposals),
-            encoding="utf-8",
-        )
+    # Exclusive creation closes the check-then-write race: never overwrite a
+    # file created by another process after the initial existence check.
+    created: list[Path] = []
+    try:
+        with dst.open("x", encoding="utf-8", newline="") as stream:
+            created.append(dst)
+            stream.write(cleaned)
+        if review is not None:
+            with review.open("x", encoding="utf-8", newline="") as stream:
+                created.append(review)
+                stream.write(
+                    "".join(json.dumps(asdict(p), ensure_ascii=False) + "\n"
+                            for p in proposals)
+                )
+    except Exception:
+        for created_path in reversed(created):
+            try:
+                created_path.unlink()
+            except OSError:
+                pass
+        raise
     return CleanResult(
         source=str(src), output=str(dst), raw_sha256=_sha256(raw_bytes),
         cleaned_sha256=_sha256(cleaned.encode("utf-8")),
