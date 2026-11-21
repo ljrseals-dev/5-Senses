@@ -22,8 +22,8 @@ class NGramModel:
     def __init__(self, n: int = 3, level: str = "word"):
         if n < 1:
             raise ValueError("n must be >= 1")
-        if level not in ("word", "char"):
-            raise ValueError("level must be 'word' or 'char'")
+        if level not in ("word", "char", "token"):
+            raise ValueError("level must be 'word', 'char', or 'token'")
         self.n = n
         self.level = level
         self.counts: dict[tuple[str, ...], dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -34,6 +34,8 @@ class NGramModel:
     def _tokens(self, text: str) -> list[str]:
         if self.level == "char":
             return list(text.lower())
+        if self.level == "token":
+            return text.split()
         return tokenize(text)
 
     def train(self, texts: list[str]) -> None:
