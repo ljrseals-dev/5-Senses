@@ -34,6 +34,8 @@ It does not contain or reproduce Claude Code source code.
   must not suppress cancellation if they need timeout guarantees.
 - Tool-call requests and tool results are preserved as correlated structured
   messages using the call ID. Results are emitted in original request order.
+  Empty IDs, malformed argument objects, and duplicate IDs fail the model turn
+  before an invalid tool transcript is sent back to the backend.
 - Ordinary tool errors are returned to the model as results instead of
   crashing the session.
 - The state machine has a maximum turn count and records transitions.
