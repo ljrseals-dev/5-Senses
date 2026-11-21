@@ -23,12 +23,21 @@ def validate_tokens(value,*,min_tokens=4,max_tokens=64,max_interval=12,
     if any(not isinstance(token,str) for token in tokens):
         raise ValueError("tokens must contain only strings")
     errors=[]
-    if not isinstance(max_interval,int) or max_interval < 0:
-        raise ValueError("max_interval must be a non-negative integer")
+    bounds=(min_tokens,max_tokens,max_interval,max_events_per_four_beats)
+    if any(not isinstance(value,int) or isinstance(value,bool) for value in bounds):
+        raise ValueError("token validation bounds must be integers")
     if min_tokens < 0 or max_tokens < min_tokens:
         raise ValueError("invalid token length bounds")
+    if max_interval < 0:
+        raise ValueError("max_interval must be a non-negative integer")
     if max_events_per_four_beats < 1:
         raise ValueError("max_events_per_four_beats must be positive")
+    if key_pitch_classes is not None and (
+        not isinstance(key_pitch_classes,(set,frozenset))
+        or any(not isinstance(pitch,int) or isinstance(pitch,bool) or not 0 <= pitch <= 11
+               for pitch in key_pitch_classes)
+    ):
+        raise ValueError("key_pitch_classes must contain pitch classes 0..11")
     if any(not TOKEN_RE.fullmatch(t) for t in tokens):
         return ValidationResult(False,("invalid_token",),tuple(tokens))
     if len(tokens)<min_tokens: errors.append("sequence_too_short")
