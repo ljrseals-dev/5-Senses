@@ -43,10 +43,14 @@ whole model in FP32 and promotes stored FP16 parameters during state-dict load.
 The uploaded archive's LICENSE is an MIT license for the supplied code, with
 copyright attributed to Lewis James Seals Jr. Its README explicitly says that
 upstream terms for the original MusicNN weights and code apply and does not
-grant or assert a weight license. The public MusicNN PyTorch model repository
-labels its repository Apache-2.0, but that label alone does not establish the
-redistribution rights for this separately exported checkpoint or the
-underlying MSD-derived training artifacts.
+grant or assert a weight license. The original jordipons/musicnn source publishes an ISC license for its code.
+The public oriyonay/musicnn-pytorch repository labels its model repository
+Apache-2.0. The MSD dataset's own terms distinguish Echo Nest API data from
+Last.fm tag data (CC BY-NC-SA 2.0). These are separate provenance layers; none
+of those repository-level labels by itself resolves the exact redistribution
+rights for this separately exported checkpoint and all of its learned
+parameters. References: https://github.com/jordipons/musicnn/blob/master/LICENSE.md
+and https://github.com/tbertinmahieux/MSongsDB/blob/master/LICENSE.
 
 Therefore the .pt file is intentionally not committed here. Keep it as a
 user-supplied local artifact until the exact checkpoint provenance and
@@ -72,13 +76,24 @@ check is not a numerical reference fixture.
 
 ## Preprocessing is a separate gate
 
-The supplied documentation specifies a 16 kHz mono target, 512-point STFT,
-256-sample hop, 96 mel bins, and log10(10000 * mel + 1). It does not
-sufficiently establish all frontend details (including exact mel filterbank
-implementation/normalization, window convention, centering/padding, and
-resampling implementation) against the original training pipeline. These
-values must not be treated as a verified preprocessing contract until checked
-against the reference implementation and a known input/output fixture.
+The original MusicNN FAQ documents 16 kHz audio, a 512-sample Hanning
+window, 50% overlap, 96 mel bands, and log10(10000 * mel + 1). The public
+PyTorch port specifies n_fft=512, hop_length=256, n_mels=96 and calls
+librosa.feature.melspectrogram without overriding its other defaults. It also
+calls librosa.resample without pinning res_type. References:
+https://github.com/jordipons/musicnn/blob/master/FAQs.md and
+https://huggingface.co/oriyonay/musicnn-pytorch/blob/main/musicnn_torch.py.
+
+The new frontend makes every setting explicit: 16 kHz, n_fft/win_length 512,
+hop 256, Hann window, centered constant padding, power 2, 96 Slaney-normalized
+HTK-disabled mel bins from 0 to 8 kHz, log10(10000 * mel + 1), and soxr_hq
+resampling. librosa is pinned to 0.11.0 in the optional audio extra. This is a
+reproducible pinned interpretation of the public port, not proof of the
+historical training frontend: the source port did not pin its librosa version
+or resampling default. The fixed-waveform regression test is a local
+implementation regression fixture, not an upstream-provided reference pair.
+Preprocessing parity remains unverified until compared against an independent
+reference output generated under the original dependency versions.
 
 ## Tag quality is separate
 
