@@ -1,6 +1,6 @@
 """Music token vocabulary and structural/theory validation."""
-# ruff: noqa: E701, E702, E704
 from __future__ import annotations
+
 import re
 from dataclasses import dataclass
 TOKEN_RE=re.compile(r"^(?:P(?:0[0-9]{2}|1[01][0-9]|12[0-7])|D(?:016|008|004|002|001)|DRST|CHD|B)$")
