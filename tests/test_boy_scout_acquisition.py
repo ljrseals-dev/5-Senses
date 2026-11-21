@@ -52,7 +52,7 @@ def test_manifest_detects_modified_content(tmp_path: Path):
     manifest_path = write_manifest(manifest, tmp_path / "manifest.json")
     item.write_text("modified", encoding="utf-8")
     assert verify_manifest(manifest_path, root) == [
-        {"path": "item.txt", "status": "size_mismatch"}
+        {"path": "item.txt", "status": "hash_mismatch"}
     ]
 
 
