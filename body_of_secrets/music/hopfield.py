@@ -46,6 +46,7 @@ class MotifMemory:
     def energy_gap(self, tokens):
         if not self.patterns: return float("inf")
         cue=project_motif(tuple(tokens),self.dimensions)
+        if any(cue==pattern["vector"] for pattern in self.patterns): return 0.0
         if self._network is None: return 1.0-self.recall_overlap(tokens)
         cue_energy=self._network.energy(cue)
         stored_energy=min(self._network.energy(p["vector"]) for p in self.patterns)
