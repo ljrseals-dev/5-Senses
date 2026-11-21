@@ -6,7 +6,7 @@ This extension adds symbolic MIDI/ABC learning to BODY OF SECRETS without wavefo
 
 Pitch P000-P127; duration D016/D008/D004/D002/D001; rest DRST; chord marker CHD; optional bar marker B. Notes are Pxxx/Dxxx pairs. To make chord boundaries unambiguous without inventing another token, each chord tone is prefixed by CHD: CHD P060 D004 CHD P067 D004. The following unmarked P/D pair is the next melodic event.
 
-MIDI supports PPQ-based SMF format 0/1, note on/off, running status and same-onset polyphonic grouping. SMPTE timing is rejected. ABC covers basic note letters, octave marks, accidentals and simple duration suffixes; tuplets, broken rhythms, inline key changes and complex decorations are not interpreted.
+MIDI supports PPQ-based SMF format 0/1, note on/off, running status and same-onset polyphonic grouping. SMPTE timing is rejected. ABC covers basic note letters, octave marks, accidentals, simple duration suffixes and bracket chords; tuplets, broken rhythms, inline key changes, key-signature accidental propagation and complex decorations are not interpreted.
 
 ## Commands
 
