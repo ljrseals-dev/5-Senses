@@ -1,4 +1,5 @@
 """Music-theory validation and uncertainty scoring."""
+# ruff: noqa: E701, E702, E704
 from __future__ import annotations
 from dataclasses import dataclass
 from .hopfield import MotifMemory
