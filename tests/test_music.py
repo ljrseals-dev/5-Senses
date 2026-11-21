@@ -24,9 +24,16 @@ def test_token_validation_and_leap():
     assert "invalid_token" in validate_tokens("P60 D004 P064 D004").violations
 def test_chord_group_does_not_absorb_next_melody_note():
     assert validate_tokens("CHD P060 D004 CHD P067 D004 P069 D004").valid
+    assert not validate_tokens("CHD P067 D004 CHD P060 D004 P069 D004").valid
 def test_midi_encoder_marks_simultaneous_notes_as_a_chord(tmp_path):
     path=tmp_path/"chord.mid"
     track=bytes([0,0x90,60,100,0,0x90,67,100])+_vlq(480)+bytes([0x80,60,0,0,0x80,67,0,0,0xff,0x2f,0])
+    path.write_bytes(b"MThd"+struct.pack(">IHHH",6,0,1,480)+b"MTrk"+struct.pack(">I",len(track))+track)
+    assert encode_file(path)=="CHD P060 D004 CHD P067 D004"
+
+def test_midi_running_status_preserves_event_status(tmp_path):
+    path=tmp_path/"running.mid"
+    track=bytes([0,0x90,60,100,0,67,100])+_vlq(480)+bytes([0x80,60,0,0,67,0,0,0xff,0x2f,0])
     path.write_bytes(b"MThd"+struct.pack(">IHHH",6,0,1,480)+b"MTrk"+struct.pack(">I",len(track))+track)
     assert encode_file(path)=="CHD P060 D004 CHD P067 D004"
 
@@ -49,6 +56,12 @@ def test_existing_ngram_supports_exact_symbolic_tokens():
     model=NGramModel(n=2,level="token"); model.train(["P060 D004 P064 D004"])
     assert "P060" in model.vocab and "D004" in model.vocab
 
+def test_ngram_order_one_uses_empty_context():
+    model=MusicNGramModel(1); model.train_lines(["P060 D004 P060"])
+    distribution=model.distribution("")
+    assert distribution["P060"] > distribution["D004"]
+    assert abs(sum(distribution.values())-1.0)<1e-9
+
 def test_ngram_case_entropy_and_snapshot_roundtrip(tmp_path):
     model=MusicNGramModel(3); model.train_lines(["P060 D004 P062 D004 P064 D004"])
     assert model.continuations("P060 D004")[0][0]=="P062"
@@ -67,6 +80,11 @@ def test_corpus_source_idempotency_and_duplicate_sources(tmp_path):
     assert not writer.append(sample,source="file:a.mid")
     assert writer.append(sample,source="file:b.mid")
     assert not writer.append(sample,source="llm")
+
+def test_corpus_writer_refreshes_indexes_across_instances(tmp_path):
+    path=tmp_path/"corpus.txt"; first=CorpusWriter(path); second=CorpusWriter(path)
+    assert first.append("P060 D004 P062 D004",source="seed")
+    assert not second.append("P060 D004 P062 D004",source="llm")
 
 def test_corpus_dedupe_and_manifest(tmp_path):
     writer=CorpusWriter(tmp_path/"corpus.txt")
