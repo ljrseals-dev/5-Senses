@@ -56,6 +56,11 @@ def test_existing_ngram_supports_exact_symbolic_tokens():
     model=NGramModel(n=2,level="token"); model.train(["P060 D004 P064 D004"])
     assert "P060" in model.vocab and "D004" in model.vocab
 
+def test_existing_unigram_ngram_uses_empty_context():
+    model=NGramModel(n=1,level="token"); model.train(["P060 D004 P060"])
+    assert model.most_likely_continuations("P060",k=1)[0][0]=="P060"
+    assert len(model.generate(length=2,seed="P060").split())==2
+
 def test_ngram_order_one_uses_empty_context():
     model=MusicNGramModel(1); model.train_lines(["P060 D004 P060"])
     distribution=model.distribution("")
