@@ -11,7 +11,7 @@ from body_of_secrets.language import NGramModel  # noqa: E402
 from body_of_secrets.neural import HopfieldNetwork, MLP  # noqa: E402
 from body_of_secrets.sensory.msd_tags import MSD_TAGS  # noqa: E402
 from body_of_secrets.sensory.musicnn_frontend import preprocessing_record  # noqa: E402
-from body_of_secrets.sensory.musicnn_msd import MusicnnMSD  # noqa: E402
+from body_of_secrets.sensory.musicnn_msd import MusicnnMSD, load_msd_musicnn  # noqa: E402
 from body_of_secrets.sensory.musicnn_provenance import build_musicnn_provenance  # noqa: E402
 from body_of_secrets.sensory.musicnn_adapters import (  # noqa: E402
     archive_musicnn_analysis,
@@ -48,6 +48,26 @@ def test_prediction_returns_stable_top_k_and_all_features():
     assert len(musicnn_mlp_features(result)) == 50
     assert musicnn_mlp_features(result) == [0.5] * 50
 
+
+
+def test_adapter_uses_fp16_compute_dtype_when_batch_norm_is_fp32(tmp_path):
+    state = MusicnnMSD().state_dict()
+    for name, tensor in list(state.items()):
+        if name.endswith(("running_mean", "running_var")):
+            state[name] = tensor.float()
+        elif name.endswith("num_batches_tracked"):
+            state[name] = tensor.to(torch.int64)
+        elif tensor.is_floating_point():
+            state[name] = tensor.half()
+    checkpoint = tmp_path / "half-model.pt"
+    torch.save(state, checkpoint)
+    model = load_msd_musicnn(checkpoint, half=True)
+
+    # Adapter input is float32; it must follow the FP16 conv/linear compute path,
+    # not the first (FP32) BatchNorm parameter.
+    result = predict_msd_tags(model, torch.zeros((1, 187, 96), dtype=torch.float32))
+    assert result.patch_count == 1
+    assert len(result.mean_probabilities) == 50
 
 def test_prediction_rejects_bad_shapes_and_top_k():
     with pytest.raises(ValueError, match="patches"):
