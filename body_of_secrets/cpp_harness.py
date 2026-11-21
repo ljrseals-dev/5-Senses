@@ -62,6 +62,10 @@ def load_fixture_manifest(path: str | Path = DEFAULT_MANIFEST) -> tuple[Path, di
         rel_path = Path(relative)
         if rel_path.is_absolute() or ".." in rel_path.parts:
             raise ValueError(f"{fixture_id}: fixture path must stay within the fixture root")
+        expected_hash = fixture.get("sha256")
+        if (not isinstance(expected_hash, str) or len(expected_hash) != 64
+                or any(char not in "0123456789abcdef" for char in expected_hash)):
+            raise ValueError(f"{fixture_id}: manifest requires a lowercase SHA-256 pin")
         if fixture.get("standard") not in ALLOWED_STANDARDS:
             raise ValueError(f"{fixture_id}: unsupported C++ standard")
         if fixture.get("expected") not in ALLOWED_EXPECTED:
@@ -253,6 +257,8 @@ def run_fixture(fixture_id: str, *, compiler_name: str = "g++",
         raise RuntimeError("compiler version probe failed")
     version = (version_result["stdout"] or version_result["stderr"]).splitlines()[0]
     source_hash = sha256_file(source)
+    if source_hash != fixture["sha256"]:
+        raise ValueError(f"{fixture_id}: source SHA-256 does not match the manifest pin")
     sanitizer_names: list[str | None] = fixture["sanitizers"] or [None]
     runs: list[dict[str, Any]] = []
 
