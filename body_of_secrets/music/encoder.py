@@ -112,7 +112,7 @@ def _abc(path: Path) -> str:
 
     def note_sort_key(note):
         accidental, letter, marks, _ = note
-        octave = (5 if letter.islower() else 4) + marks.count("\\'") - marks.count(",")
+        octave = (5 if letter.islower() else 4) + marks.count("\'") - marks.count(",")
         pitch = 60 + (octave - 4) * 12 + semitones[letter.upper()]
         pitch += accidental.count("^") - accidental.count("_")
         return pitch
