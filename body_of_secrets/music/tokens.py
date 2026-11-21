@@ -45,9 +45,11 @@ def validate_tokens(value,*,min_tokens=4,max_tokens=64,max_interval=12,
             pitches.append(int(m.group(1))); durations.append(tokens[i+1]); i+=2
         if not pitches: continue
         if chord and len(pitches)<2: errors.append("invalid_event_structure")
+        # Chord tones are simultaneous: compare the chord root with the prior
+        # melodic event, but never compare notes within the chord as a melody.
         if previous_pitch is not None and abs(pitches[0]-previous_pitch)>max_interval:
             errors.append("interval_exceeded")
-        previous_pitch=pitches[-1]
+        previous_pitch=pitches[0]
         if key_pitch_classes is not None and any(p%12 not in key_pitch_classes for p in pitches):
             errors.append("outside_key")
         beat_window+=min(DURATION_BEATS[d] for d in durations); event_count+=1
