@@ -1,0 +1,31 @@
+name: Python tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install project and optional MusicNN dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,musicnn,audio]"
+      - name: Run tests
+        run: python -m pytest -q
+      - name: Lint changed MusicNN files
+        run: |
+          ruff check body_of_secrets/sensory/musicnn_msd.py \
+            body_of_secrets/sensory/musicnn_frontend.py \
+            tests/test_musicnn_loader.py tests/test_musicnn_frontend.py
