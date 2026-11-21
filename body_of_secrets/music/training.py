@@ -1,4 +1,5 @@
 """Offline-first training and opt-in active teacher loop."""
+# ruff: noqa: E701, E702, E704
 from __future__ import annotations
 import hashlib
 from pathlib import Path
