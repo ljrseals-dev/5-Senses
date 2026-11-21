@@ -21,6 +21,12 @@ def test_token_validation_and_leap():
     assert "invalid_token" in validate_tokens("P60 D004 P064 D004").violations
 def test_chord_group_does_not_absorb_next_melody_note():
     assert validate_tokens("CHD P060 D004 CHD P067 D004 P069 D004").valid
+def test_midi_encoder_marks_simultaneous_notes_as_a_chord(tmp_path):
+    path=tmp_path/"chord.mid"
+    track=b"\\x00\\x90\\x3c\\x64\\x00\\x90\\x43\\x64"+_vlq(480)+b"\\x80\\x3c\\x00\\x00\\x80\\x43\\x00\\x00\\xff\\x2f\\x00"
+    path.write_bytes(b"MThd"+struct.pack(">IHHH",6,0,1,480)+b"MTrk"+struct.pack(">I",len(track))+track)
+    assert encode_file(path)=="CHD P060 D004 CHD P067 D004"
+
 def test_midi_encoding_is_stable(tmp_path):
     path=tmp_path/"scale.mid"; _midi(path)
     assert encode_file(path)==encode_file(path)
@@ -36,6 +42,7 @@ def test_existing_ngram_supports_exact_symbolic_tokens():
 def test_ngram_case_entropy_and_snapshot_roundtrip(tmp_path):
     model=MusicNGramModel(3); model.train_lines(["P060 D004 P062 D004 P064 D004"])
     assert model.continuations("P060 D004")[0][0]=="P062"
+    assert model.perplexity(["P060 D004 P062 D004"]) > 0
     assert abs(sum(model.distribution("P060 D004").values())-1.)<1e-9
     path=tmp_path/"model.json"; model.save(path)
     assert MusicNGramModel.load(path).to_dict()==model.to_dict()
@@ -43,6 +50,14 @@ def test_motif_projection_and_capacity():
     assert project_motif(("P060","D004"))==project_motif(("P060","D004"))
     memory=MotifMemory(2); memory.build(["P060 D004 P062 D004 P064 D004 P065 D004"]*4)
     assert len(memory.patterns)<=2 and all(len(p["vector"])==128 for p in memory.patterns)
+def test_corpus_source_idempotency_and_duplicate_sources(tmp_path):
+    writer=CorpusWriter(tmp_path/"corpus.txt")
+    sample="P060 D004 P062 D004"
+    assert writer.append(sample,source="file:a.mid")
+    assert not writer.append(sample,source="file:a.mid")
+    assert writer.append(sample,source="file:b.mid")
+    assert not writer.append(sample,source="llm")
+
 def test_corpus_dedupe_and_manifest(tmp_path):
     writer=CorpusWriter(tmp_path/"corpus.txt")
     assert writer.append("P060 D004 P062 D004",source="test")
