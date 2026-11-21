@@ -92,6 +92,7 @@ class NGramModel:
         # Start from a random observed context or the provided seed
         if seed:
             tokens = self._tokens(seed)
+            context: tuple[str, ...]
             if self.n == 1:
                 context = ()
             elif len(tokens) >= self.n - 1:
@@ -124,6 +125,7 @@ class NGramModel:
         if not isinstance(k, int) or isinstance(k, bool) or k < 0:
             raise ValueError("k must be a non-negative integer")
         tokens = self._tokens(prefix)
+        context: tuple[str, ...]
         if self.n == 1:
             context = ()
         elif len(tokens) < self.n - 1:
