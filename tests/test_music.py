@@ -7,6 +7,7 @@ from body_of_secrets.music.hopfield import MotifMemory,project_motif
 from body_of_secrets.music.ngram import MusicNGramModel
 from body_of_secrets.music.snapshots import SnapshotStore
 from body_of_secrets.music.tokens import validate_tokens
+from body_of_secrets.music.training import train_music
 from body_of_secrets.music.validator import evaluate_uncertainty
 def _vlq(n):
     out=[n&127]; n>>=7
@@ -72,6 +73,22 @@ def test_snapshot_integrity_and_rollback(tmp_path):
     corpus.write_text("P060 D004 P064 D004\n"); store.rollback(version,corpus)
     assert corpus.read_text()=="P060 D004 P062 D004\n"
     assert store.load(version)[0].to_dict()==model.to_dict()
+class _Teacher:
+    def __init__(self): self.calls=0
+    def complete(self,prompt):
+        self.calls+=1
+        assert "P072 D004 P074 D004" in prompt
+        return "P064 D004 P065 D004"
+
+def test_active_teacher_sample_is_conditioned_on_context(tmp_path):
+    seed=tmp_path/"seed"; seed.mkdir()
+    (seed/"scale.abc").write_text("X:1\\nT:Scale\\nL:1/4\\nK:C\\nC D E F G A B c d |\\n")
+    teacher=_Teacher()
+    version=train_music(seed,work_dir=tmp_path/"work",order=5,max_iterations=1,teacher=teacher)
+    assert version=="v002" and teacher.calls==1
+    corpus=(tmp_path/"work"/"corpus"/"symbolic_music.txt").read_text()
+    assert "P072 D004 P074 D004 P064 D004 P065 D004" in corpus
+
 def test_uncertainty_flags_unseen_context():
     model=MusicNGramModel(3); model.train_lines(["P060 D004 P062 D004 P064 D004"])
     verdict=evaluate_uncertainty(model,MotifMemory(),"P099 D001","P060 D004")
