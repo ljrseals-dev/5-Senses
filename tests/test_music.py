@@ -97,8 +97,10 @@ def test_snapshot_integrity_and_rollback(tmp_path):
     model=MusicNGramModel.from_file(corpus,3); memory=MotifMemory()
     store=SnapshotStore(tmp_path/"snapshots"); version=store.commit(model,memory,corpus)
     assert version=="v001"; store.verify(version)
+    manifest=tmp_path/"provenance.jsonl"; manifest.write_text('{"source":"changed"}\n')
     corpus.write_text("P060 D004 P064 D004\n"); store.rollback(version,corpus)
     assert corpus.read_text()=="P060 D004 P062 D004\n"
+    assert manifest.read_text()==""
     assert store.load(version)[0].to_dict()==model.to_dict()
 class _Teacher:
     def __init__(self): self.calls=0
