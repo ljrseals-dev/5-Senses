@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from body_of_secrets.archive import Archive
+from body_of_secrets.archive import store as archive_store
 
 
 def test_document_ids_include_full_content_not_only_prefix(tmp_path):
@@ -44,3 +45,15 @@ def test_import_text_file_rejects_invalid_utf8_instead_of_replacing(tmp_path):
         with pytest.raises(UnicodeDecodeError):
             archive.import_text_file(source)
         assert archive.count() == 0
+
+
+def test_document_and_term_index_update_roll_back_together(tmp_path, monkeypatch):
+    with Archive(tmp_path / "archive.db") as archive:
+        def fail_tokenize(_content):
+            raise RuntimeError("simulated tokenizer failure")
+
+        monkeypatch.setattr(archive_store, "tokenize", fail_tokenize)
+        with pytest.raises(RuntimeError, match="simulated tokenizer failure"):
+            archive.import_document("title", "content", "source")
+        assert archive.count() == 0
+        assert archive.search("content") == []
