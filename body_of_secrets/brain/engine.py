@@ -8,6 +8,7 @@ RESEARCH, AUDIT, and HYBRID may use an explicitly permitted provider.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from threading import Lock
 
 from body_of_secrets import __version__, __disclaimer__
 from body_of_secrets.archive import Archive
@@ -48,6 +49,7 @@ class Engine:
         self.expert = expert or build_default_expert()
         self._provider = provider
         self._provider_resolved = provider is not None
+        self._provider_lock = Lock()
         self.require_llm = require_llm
 
     @property
@@ -58,22 +60,21 @@ class Engine:
         provider when ``require_llm`` is false. When it is true, the original
         configuration/import error is surfaced to the caller.
         """
-        if self._provider is not None:
-            return self._provider
-        if self._provider_resolved:
-            return None
+        with self._provider_lock:
+            if self._provider_resolved:
+                return self._provider
 
-        try:
-            provider = default_provider()
-        except (RuntimeError, ImportError):
-            if self.require_llm:
-                raise
+            try:
+                provider = default_provider()
+            except (RuntimeError, ImportError):
+                if self.require_llm:
+                    raise
+                self._provider_resolved = True
+                return None
+
+            self._provider = provider
             self._provider_resolved = True
-            return None
-
-        self._provider = provider
-        self._provider_resolved = True
-        return self._provider
+            return self._provider
 
     def ask(
         self,
