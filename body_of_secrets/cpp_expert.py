@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 _RULES = [
-    ("cpp_pure_virtual_destructor", r"pure\s+virtual\s+~|virtual\s+~\w+\s*\(\s*\)\s*=\s*0",
+    ("cpp_pure_virtual_destructor", r"pure\s+virtual\s+(destructor|~)|virtual\s+~\w+\s*\(\s*\)\s*=\s*0",
      "A pure virtual destructor still needs a definition when derived-object destruction odr-uses it.",
      "Build and link a minimal derived class; inspect any undefined destructor symbol.",
      30),
