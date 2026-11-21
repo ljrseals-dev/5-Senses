@@ -8,10 +8,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import math
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Protocol, Sequence
-import math
 
 
 JsonObject = Mapping[str, Any]
@@ -33,6 +33,7 @@ class ToolSpec:
     name: str
     handler: ToolHandler
     description: str = ""
+    input_schema: Mapping[str, Any] = field(default_factory=dict)
     is_read_only: bool = True
     is_concurrency_safe: bool = False
     is_destructive: bool = False
@@ -45,6 +46,8 @@ class ToolSpec:
             raise TypeError("tool handler must be callable")
         if not isinstance(self.description, str):
             raise TypeError("tool description must be a string")
+        if not isinstance(self.input_schema, Mapping):
+            raise TypeError("input_schema must be a mapping")
         if not all(isinstance(flag, bool) for flag in (
             self.is_read_only, self.is_concurrency_safe, self.is_destructive
         )):
@@ -89,6 +92,7 @@ class ToolRegistry:
             {
                 "name": item.name,
                 "description": item.description,
+                "input_schema": dict(item.input_schema),
                 "is_read_only": item.is_read_only,
                 "is_concurrency_safe": item.is_concurrency_safe,
                 "is_destructive": item.is_destructive,
