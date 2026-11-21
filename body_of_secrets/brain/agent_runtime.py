@@ -12,11 +12,28 @@ import json
 import math
 from dataclasses import dataclass, field
 from enum import Enum
+from types import MappingProxyType
 from typing import Any, AsyncIterator, Awaitable, Callable, Mapping, Protocol, Sequence
 
 
 JsonObject = Mapping[str, Any]
 ToolHandler = Callable[[JsonObject], Any | Awaitable[Any]]
+
+
+def _freeze_json(value: Any) -> Any:
+    if isinstance(value, dict):
+        return MappingProxyType({key: _freeze_json(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze_json(item) for item in value)
+    return value
+
+
+def _thaw_json(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _thaw_json(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [_thaw_json(item) for item in value]
+    return value
 
 
 class AgentStatus(str, Enum):
@@ -57,7 +74,7 @@ class ToolSpec:
             schema_json = json.dumps(dict(self.input_schema), allow_nan=False)
         except (TypeError, ValueError) as exc:
             raise ValueError("input_schema must contain only JSON-compatible values") from exc
-        object.__setattr__(self, "input_schema", json.loads(schema_json))
+        object.__setattr__(self, "input_schema", _freeze_json(json.loads(schema_json)))
         if not all(isinstance(flag, bool) for flag in (
             self.is_read_only, self.is_concurrency_safe, self.is_destructive
         )):
@@ -102,7 +119,7 @@ class ToolRegistry:
             {
                 "name": item.name,
                 "description": item.description,
-                "input_schema": json.loads(json.dumps(item.input_schema)),
+                "input_schema": _thaw_json(item.input_schema),
                 "is_read_only": item.is_read_only,
                 "is_concurrency_safe": item.is_concurrency_safe,
                 "is_destructive": item.is_destructive,
