@@ -50,7 +50,7 @@ def test_runner_refuses_fixture_bytes_that_do_not_match_manifest_pin(tmp_path):
         pytest.skip(f"{COMPILER} is not installed")
     fixture_root = tmp_path / "fixture"
     fixture_root.mkdir()
-    (fixture_root / "control.cpp").write_text("int main() { return 0; }\\n", encoding="utf-8")
+    (fixture_root / "control.cpp").write_text("int main() { return 0; }\n", encoding="utf-8")
     manifest = {
         "schema_version": 1,
         "external_source_code_included": False,
