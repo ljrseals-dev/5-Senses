@@ -17,7 +17,9 @@ It does not contain or reproduce Claude Code source code.
 - Read-only tools are permitted by default. Mutating tools require an explicit
   `PermissionPolicy(allow_mutating=True)`; destructive tools additionally
   require `allow_destructive=True`.
-- Tool input validation is performed by the registered tool's validator.
+- Each tool may publish a JSON-compatible `input_schema` to the backend.
+  The registered validator remains the enforcement point; the schema is a
+  model-facing contract, not a security boundary.
 - Mutating and destructive handlers must be asynchronous. Synchronous
   handlers are accepted only for tools declared read-only.
 - Synchronous read-only handlers run in worker threads so they do not block
@@ -60,6 +62,11 @@ registry.register(ToolSpec(
     handler=lambda args: archive.search(args["query"]),
     is_read_only=True,
     is_concurrency_safe=True,
+  input_schema={
+      "type": "object",
+      "properties": {"query": {"type": "string"}},
+      "required": ["query"],
+  },
 ))
 
 runtime = AgentRuntime(
