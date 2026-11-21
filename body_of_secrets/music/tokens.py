@@ -16,6 +16,12 @@ class ValidationResult:
 def validate_tokens(value,*,min_tokens=4,max_tokens=64,max_interval=12,
                     key_pitch_classes:set[int]|None=None,max_events_per_four_beats=16):
     tokens=parse_tokens(value); errors=[]
+    if not isinstance(max_interval,int) or max_interval < 0:
+        raise ValueError("max_interval must be a non-negative integer")
+    if min_tokens < 0 or max_tokens < min_tokens:
+        raise ValueError("invalid token length bounds")
+    if max_events_per_four_beats < 1:
+        raise ValueError("max_events_per_four_beats must be positive")
     if any(not TOKEN_RE.fullmatch(t) for t in tokens):
         return ValidationResult(False,("invalid_token",),tuple(tokens))
     if len(tokens)<min_tokens: errors.append("sequence_too_short")
@@ -44,7 +50,8 @@ def validate_tokens(value,*,min_tokens=4,max_tokens=64,max_interval=12,
                 errors.append("invalid_event_structure"); i+=1; continue
             pitches.append(int(m.group(1))); durations.append(tokens[i+1]); i+=2
         if not pitches: continue
-        if chord and len(pitches)<2: errors.append("invalid_event_structure")
+        if chord and (len(pitches)<2 or pitches != sorted(pitches) or len(set(durations)) != 1):
+            errors.append("invalid_event_structure")
         # Chord tones are simultaneous: compare the chord root with the prior
         # melodic event, but never compare notes within the chord as a melody.
         if previous_pitch is not None and abs(pitches[0]-previous_pitch)>max_interval:
