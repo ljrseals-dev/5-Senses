@@ -10,6 +10,9 @@ from body_of_secrets.expert import ExpertSystem
 from body_of_secrets.language import NGramModel
 from body_of_secrets.neural import HopfieldNetwork, MLP
 from body_of_secrets.sensory.msd_tags import MSD_TAGS
+from body_of_secrets.sensory.musicnn_frontend import preprocessing_record  # noqa: E402
+from body_of_secrets.sensory.musicnn_msd import MusicnnMSD  # noqa: E402
+from body_of_secrets.sensory.musicnn_provenance import build_musicnn_provenance  # noqa: E402
 from body_of_secrets.sensory.musicnn_adapters import (
     archive_musicnn_analysis,
     confirmed_hopfield_pattern,
@@ -102,14 +105,17 @@ def test_archive_record_contains_hashes_and_unknown_status(tmp_path):
     result = predict_msd_tags(FixedLogitModel(), torch.zeros((1, 187, 96)))
     audio = tmp_path / "fixture.wav"
     audio.write_bytes(b"local test audio bytes")
-    checkpoint_hash = "a" * 64
+    checkpoint = tmp_path / "checkpoint.pt"
+    torch.save(MusicnnMSD().state_dict(), checkpoint)
+    provenance = build_musicnn_provenance(
+        checkpoint,
+        preprocessing_record(),
+        integration_commit_sha="a" * 40,
+    )
+    checkpoint_hash = provenance["checkpoint_sha256"]
     with Archive(tmp_path / "archive.db") as archive:
         doc_id = archive_musicnn_analysis(
-            archive,
-            result,
-            audio,
-            checkpoint_sha256=checkpoint_hash,
-            preprocessing={"sample_rate": 16000, "n_mels": 96},
+            archive, result, audio, provenance=provenance
         )
         document = archive.get(doc_id)
 
@@ -117,5 +123,7 @@ def test_archive_record_contains_hashes_and_unknown_status(tmp_path):
     assert document.metadata["truth_status"] == "UNKNOWN"
     assert document.metadata["tag_quality_validated"] is False
     assert document.metadata["checkpoint_sha256"] == checkpoint_hash
+    assert document.metadata["musicnn_provenance"]["integration_commit_sha"] == "a" * 40
+    assert document.metadata["musicnn_provenance"]["numerical_equivalence_verified"] is False
     assert len(document.metadata["audio_sha256"]) == 64
     assert len(document.content.splitlines()) >= 53
