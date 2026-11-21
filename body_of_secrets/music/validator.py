@@ -22,7 +22,7 @@ def evaluate_uncertainty(model:MusicNGramModel,memory:MotifMemory,context:str,ca
     reasons=[]
     if not distribution: reasons.append("unseen_context")
     elif entropy>entropy_threshold: reasons.append("entropy_exceeded")
-    if not memory.patterns or overlap<hopfield_threshold: reasons.append("hopfield_unrecognized")
+    if not memory.patterns or memory.energy_gap(candidate.split())>hopfield_threshold: reasons.append("hopfield_unrecognized")
     if not result.valid: reasons.append("rule_validation_failed")
     return UncertaintyVerdict(bool(reasons),reasons[0] if reasons else "confident",context,candidate,
                               entropy,overlap,result.violations)
