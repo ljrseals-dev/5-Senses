@@ -3,6 +3,7 @@ import json
 import struct
 
 import pytest
+
 from body_of_secrets.language import NGramModel
 from body_of_secrets.music.corpus import CorpusWriter
 from body_of_secrets.music.encoder import encode_file
