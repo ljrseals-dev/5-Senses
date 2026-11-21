@@ -7,7 +7,7 @@ from pathlib import Path
 from body_of_secrets.neural import HopfieldNetwork
 
 def project_motif(motif: tuple[str, ...], dimensions: int = 128) -> list[int]:
-    if dimensions < 8: raise ValueError("dimensions must be >= 8")
+    if not isinstance(dimensions,int) or isinstance(dimensions,bool) or dimensions < 8: raise ValueError("dimensions must be an integer >= 8")
     seed = " ".join(motif).encode()
     bits, counter = [], 0
     while len(bits) < dimensions:
@@ -20,8 +20,8 @@ def project_motif(motif: tuple[str, ...], dimensions: int = 128) -> list[int]:
 
 class MotifMemory:
     def __init__(self, max_patterns=5000, dimensions=128):
-        if max_patterns < 1: raise ValueError("max_patterns must be positive")
-        if not isinstance(dimensions,int) or dimensions < 8: raise ValueError("dimensions must be an integer >= 8")
+        if not isinstance(max_patterns,int) or isinstance(max_patterns,bool) or max_patterns < 1: raise ValueError("max_patterns must be a positive integer")
+        if not isinstance(dimensions,int) or isinstance(dimensions,bool) or dimensions < 8: raise ValueError("dimensions must be an integer >= 8")
         self.max_patterns, self.dimensions, self.patterns = max_patterns, dimensions, []
         self._network = None
     def build(self, lines, min_frequency=3):
