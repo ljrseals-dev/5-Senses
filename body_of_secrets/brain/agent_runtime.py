@@ -188,7 +188,9 @@ class ToolCall:
             _validate_json_keys(self.arguments)
             arguments_json = json.dumps(dict(self.arguments), allow_nan=False)
         except (TypeError, ValueError, RecursionError) as exc:
-            raise ValueError("tool call arguments must contain only JSON-compatible values") from exc
+            raise ValueError(
+                "tool call arguments must contain only JSON-compatible values"
+            ) from exc
         object.__setattr__(self, "arguments", json.loads(arguments_json))
 
 
@@ -382,7 +384,9 @@ class AgentRuntime:
                             if item.kind == "text":
                                 response_chars += len(item.text)
                                 if response_chars > self.max_response_chars_per_turn:
-                                    raise ValueError("model response exceeded per-turn character limit")
+                                    raise ValueError(
+                                        "model response exceeded per-turn character limit"
+                                    )
                                 text_parts.append(item.text)
                                 yield AgentEvent("text", state.turn, {"text": item.text})
                             elif item.kind == "tool_call" and item.tool_call is not None:
