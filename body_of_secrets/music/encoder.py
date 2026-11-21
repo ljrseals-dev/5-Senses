@@ -80,31 +80,55 @@ def _midi(path: Path) -> str:
         previous_end = max(previous_end, max(start + duration for _, duration in event))
     return " ".join(tokens)
 
-_ABC = re.compile(r"([_^=]*)([A-Ga-g])([,']*)(\d*(?:/\d*)?)")
+_ABC_NOTE = re.compile(r"([_^=]*)([A-Ga-g])([,']*)(\d*(?:/\d*)?)")
+_ABC_EVENT = re.compile(r"\[([^\]]+)\](\d*(?:/\d*)?)|([_^=]*)([A-Ga-g])([,']*)(\d*(?:/\d*)?)")
+
 def _abc(path: Path) -> str:
     text = path.read_text(encoding="utf-8-sig")
     unit = .5
     for line in text.splitlines():
-        m = re.match(r"\s*L:\s*(\d+)\s*/\s*(\d+)", line)
-        if m and int(m.group(2)): unit = 4 * int(m.group(1)) / int(m.group(2))
+        match = re.match(r"\s*L:\s*(\d+)\s*/\s*(\d+)", line)
+        if match and int(match.group(2)):
+            unit = 4 * int(match.group(1)) / int(match.group(2))
     body = "\n".join(line for line in text.splitlines() if not re.match(r"\s*[A-Za-z]:", line))
     body = re.sub(r'"[^"]*"|![^!]*!|%.*', " ", body)
     semitones = dict(zip("CDEFGAB", (0, 2, 4, 5, 7, 9, 11)))
-    tokens = []
-    for accidental, letter, marks, length in _ABC.findall(body):
+
+    def append_note(tokens, note, duration_override="", chord=False):
+        accidental, letter, marks, length = note
         octave = (5 if letter.islower() else 4) + marks.count("'") - marks.count(",")
-        pitch = 60 + (octave-4)*12 + semitones[letter.upper()]
-        if "^" in accidental: pitch += accidental.count("^")
-        if "_" in accidental: pitch -= accidental.count("_")
-        if "=" in accidental: pitch = 60 + (octave-4)*12 + semitones[letter.upper()]
-        if not 0 <= pitch <= 127: continue
-        mult = 1.
+        pitch = 60 + (octave - 4) * 12 + semitones[letter.upper()]
+        if "^" in accidental:
+            pitch += accidental.count("^")
+        if "_" in accidental:
+            pitch -= accidental.count("_")
+        if "=" in accidental:
+            pitch = 60 + (octave - 4) * 12 + semitones[letter.upper()]
+        if not 0 <= pitch <= 127:
+            return
+        length = duration_override or length
+        multiplier = 1.0
         if length:
             if "/" in length:
-                a, _, b = length.partition("/")
-                mult = (float(a) if a else 1.) / (float(b) if b else 2.)
-            else: mult = float(length)
-        tokens.extend((f"P{pitch:03d}", _duration(unit * mult)))
+                numerator, _, denominator = length.partition("/")
+                multiplier = (float(numerator) if numerator else 1.0) / (float(denominator) if denominator else 2.0)
+            else:
+                multiplier = float(length)
+        if chord:
+            tokens.append("CHD")
+        tokens.extend((f"P{pitch:03d}", _duration(unit * multiplier)))
+
+    tokens = []
+    for event in _ABC_EVENT.finditer(body):
+        if event.group(1) is not None:
+            notes = _ABC_NOTE.findall(event.group(1))
+            if len(notes) > 1:
+                for note in notes:
+                    append_note(tokens, note, event.group(2), chord=True)
+            elif notes:
+                append_note(tokens, notes[0], event.group(2))
+        else:
+            append_note(tokens, (event.group(3), event.group(4), event.group(5), event.group(6)))
     return " ".join(tokens)
 
 def encode_file(path: str | Path) -> str:
