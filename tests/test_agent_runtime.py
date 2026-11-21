@@ -378,3 +378,13 @@ def test_tool_schema_is_copied_and_must_be_json_compatible():
         tool.input_schema["properties"]["q"]["type"] = "integer"
     with pytest.raises(ValueError, match="JSON-compatible"):
         ToolSpec("bad", lambda args: "ok", input_schema={"bad": object()})
+
+
+
+def test_tool_call_arguments_are_copied_and_json_validated():
+    arguments = {"query": ["one", "two"]}
+    call = ToolCall("call-1", "lookup", arguments)
+    arguments["query"].append("mutated")
+    assert call.arguments == {"query": ["one", "two"]}
+    with pytest.raises(ValueError, match="JSON-compatible"):
+        ToolCall("call-2", "lookup", {"bad": object()})
