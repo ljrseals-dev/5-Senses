@@ -177,3 +177,21 @@ def test_abc_zero_duration_denominator_is_rejected(tmp_path):
     path.write_text("X:1\nL:1/4\nK:C\nC1/0 D |\n")
     with pytest.raises(ValueError,match="denominator must be non-zero"):
         encode_file(path)
+
+def test_public_bounds_reject_invalid_numeric_types(tmp_path):
+    with pytest.raises(ValueError,match="non-negative integer"):
+        NGramModel(2).generate(-1)
+    with pytest.raises(ValueError,match="non-negative integer"):
+        NGramModel(2).most_likely_continuations("P060",k=1.5)
+    with pytest.raises(ValueError,match="integers"):
+        validate_tokens("P060 D004",min_tokens=True)
+    with pytest.raises(ValueError,match="pitch classes"):
+        validate_tokens("P060 D004",key_pitch_classes={12})
+    with pytest.raises(ValueError,match="finite positive"):
+        LoggedTeacher(object(),tmp_path/"teacher.log",timeout=float("nan"))
+    with pytest.raises(ValueError,match="non-negative integer"):
+        LoggedTeacher(object(),tmp_path/"teacher.log",retries=1.5)
+    with pytest.raises(ValueError,match="non-negative integer"):
+        SnapshotStore(tmp_path/"snapshots").commit(
+            MusicNGramModel(2),MotifMemory(),tmp_path/"corpus.txt",llm_samples=-1
+        )
