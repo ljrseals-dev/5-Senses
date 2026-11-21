@@ -45,3 +45,25 @@ def test_get_document():
             assert doc is not None
             assert doc.title == "PDP"
             assert "connectionism" in doc.content
+
+
+def test_documents_with_same_prefix_keep_distinct_ids():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = Path(tmp) / "test.db"
+        prefix = "same opening text " * 20
+        with Archive(db) as archive:
+            first_id = archive.import_document(
+                title="Reference A",
+                content=prefix + "unique ending alpha",
+                source="same-source",
+            )
+            second_id = archive.import_document(
+                title="Reference A",
+                content=prefix + "unique ending beta",
+                source="same-source",
+            )
+
+            assert first_id != second_id
+            assert archive.count() == 2
+            assert archive.get(first_id).content.endswith("unique ending alpha")
+            assert archive.get(second_id).content.endswith("unique ending beta")
