@@ -278,7 +278,7 @@ def test_duplicate_tool_call_ids_fail_before_corrupting_tool_transcript():
     ]])
     events = asyncio.run(collect(AgentRuntime(backend, registry)))
     assert events[-1].data["status"] == "FAILED"
-    assert any("duplicate tool call IDs" in e.data.get("error", "") for e in events)
+    assert any("duplicate or reused tool call IDs" in e.data.get("error", "") for e in events)
     assert called == []
 
 
