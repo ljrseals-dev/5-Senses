@@ -13,9 +13,10 @@ not as model weights:
 `data/cpp_reference_corpora.json` is a metadata-only seed manifest. It contains
 stable local record IDs, source repository URLs, concept tags, candidate
 language standards, explanations, hypotheses, and discriminating tests. It
-pins each repository snapshot to a commit SHA, but does not claim that an
-individual example path has been located: source paths remain null until the
-file-level inventory is complete.
+pins each repository snapshot to a commit SHA and records eight exact example
+paths with their Git blob SHAs. The paths were resolved against the pinned
+recursive Git trees and the selected files were fetched to inspect their headers
+and key ideas.
 
 All records are marked `UNVERIFIED_HOLD`. The pinned repository snapshots are
 `BartVandewoestyne/Cpp` at `376ae463ee95ee5723e74322b7fa25a59e972ac9` and
@@ -72,7 +73,8 @@ before a cause can become verified.
 1. Inventory each source repository at a pinned commit.
 2. Locate repository-wide and file-local license notices; review book-derived
    material separately from repository-authored code.
-3. Populate exact source paths and revisions only after that audit.
+3. The eight selected paths and blob SHAs are now recorded, but remain metadata
+   only; no example source has been copied into this repository.
 4. Import only files whose license permits the intended storage and reuse.
 5. Compile examples with their declared `-std=` mode and preserve the exact
    compiler, flags, output, and test evidence.
