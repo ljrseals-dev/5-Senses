@@ -70,10 +70,45 @@ body-of-secrets ngram --train data/sample_corpus/hopfield_notes.txt --generate
 | **Expert**    | Rule engine (classical AI + verified origin facts)  | Working     |
 | **Language**  | n-gram statistical models                           | Working     |
 | **Neural**    | Hopfield network + minimal MLP                      | Working     |
-| **Eyes / Ears** | Sensory (documents / speech)                      | Placeholder |
+| **Eyes**       | Document / image sensing                           | Placeholder |
+| **Ears**       | Optional local MSD MusicNN tag features             | Experimental; parity and tag quality unverified |
 | **Spine / Blood / Heart / Soul** | Governance, provenance, integrity, ethics | Partial / Present |
 
 ---
+
+
+## Ears: optional MSD MusicNN
+
+The Ears integration is an optional local music-tag feature extractor. It
+preserves the classical MLP, Hopfield, Expert, Archive, and n-gram architecture;
+it does not generate audio or replace those components.
+
+Install the optional dependencies and provide the checkpoint yourself (the
+weights are deliberately not redistributed by this repository):
+
+```bash
+pip install -e ".[musicnn,audio]"
+```
+
+```python
+from body_of_secrets.sensory.musicnn_msd import load_msd_musicnn
+from body_of_secrets.sensory.musicnn_frontend import audio_file_to_patches
+from body_of_secrets.sensory.musicnn_adapters import predict_msd_tags
+
+model = load_msd_musicnn("/local/path/MSD_musicnn_optimized_fp16.pt")
+patches, _ = audio_file_to_patches("/local/path/track.wav")
+analysis = predict_msd_tags(model, patches)
+for tag in analysis.mean_scores:
+    print(tag.label, tag.probability)
+```
+
+The loader is local-file-only. Predictions are model-generated candidate
+annotations with UNKNOWN truth status. Numerical equivalence, preprocessing
+parity, and musical tag quality are separate, currently unverified gates.
+Human-confirmed labels are required before the MLP, Hopfield, or n-gram
+learning adapters accept examples. See
+[docs/EARS_MSD_CHECKPOINT.md](docs/EARS_MSD_CHECKPOINT.md) for provenance,
+licensing, and verification status.
 
 ## Included knowledge (sample corpus)
 
