@@ -374,5 +374,7 @@ def test_tool_schema_is_copied_and_must_be_json_compatible():
     tool = ToolSpec("lookup", lambda args: "ok", input_schema=schema)
     schema["properties"]["q"]["type"] = "integer"
     assert tool.input_schema["properties"]["q"]["type"] == "string"
+    with pytest.raises(TypeError):
+        tool.input_schema["properties"]["q"]["type"] = "integer"
     with pytest.raises(ValueError, match="JSON-compatible"):
         ToolSpec("bad", lambda args: "ok", input_schema={"bad": object()})
