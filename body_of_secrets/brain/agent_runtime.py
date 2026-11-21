@@ -240,6 +240,9 @@ class AgentRuntime:
         max_backend_retries: int = 1,
         compact_after_messages: int = 40,
         keep_recent_messages: int = 12,
+        max_response_chars_per_turn: int = 200_000,
+        max_tool_calls_per_turn: int = 32,
+        max_tool_output_chars: int = 20_000,
         compactor: ContextCompactor | None = None,
     ) -> None:
         if isinstance(max_turns, bool) or not isinstance(max_turns, int) or max_turns < 1:
@@ -262,6 +265,13 @@ class AgentRuntime:
             or keep_recent_messages < 1
         ):
             raise ValueError("keep_recent_messages must be a positive integer")
+        for name, value in (
+            ("max_response_chars_per_turn", max_response_chars_per_turn),
+            ("max_tool_calls_per_turn", max_tool_calls_per_turn),
+            ("max_tool_output_chars", max_tool_output_chars),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ValueError(f"{name} must be a positive integer")
         if not all(
             isinstance(value, (int, float)) and not isinstance(value, bool)
             and math.isfinite(value) and value > 0
@@ -285,6 +295,9 @@ class AgentRuntime:
         self.max_backend_retries = max_backend_retries
         self.compact_after_messages = compact_after_messages
         self.keep_recent_messages = keep_recent_messages
+        self.max_response_chars_per_turn = max_response_chars_per_turn
+        self.max_tool_calls_per_turn = max_tool_calls_per_turn
+        self.max_tool_output_chars = max_tool_output_chars
         self.compactor = compactor
 
     async def run(
@@ -313,6 +326,7 @@ class AgentRuntime:
             state.transitions.append("RUNNING->WAITING_FOR_MODEL")
             text_parts: list[str] = []
             calls: list[ToolCall] = []
+            response_chars = 0
             try:
                 if self._should_compact(state.messages):
                     if self.compactor is not None:
@@ -342,9 +356,14 @@ class AgentRuntime:
                         ):
                             received_event = True
                             if item.kind == "text":
+                                response_chars += len(item.text)
+                                if response_chars > self.max_response_chars_per_turn:
+                                    raise ValueError("model response exceeded per-turn character limit")
                                 text_parts.append(item.text)
                                 yield AgentEvent("text", state.turn, {"text": item.text})
                             elif item.kind == "tool_call" and item.tool_call is not None:
+                                if len(calls) >= self.max_tool_calls_per_turn:
+                                    raise ValueError("model exceeded per-turn tool-call limit")
                                 calls.append(item.tool_call)
                                 yield AgentEvent("tool_call_received", state.turn, {
                                     "call_id": item.tool_call.call_id,
@@ -543,11 +562,14 @@ class AgentRuntime:
                 if inspect.isawaitable(value):
                     value = await asyncio.wait_for(value, timeout=self.tool_timeout_seconds)
             output = str(value)
+            if len(output) > self.max_tool_output_chars:
+                output = output[:self.max_tool_output_chars] + "\n...[truncated]"
             return ToolResult("", tool.name, output, "OK")
         except asyncio.TimeoutError:
             return ToolResult("", tool.name, "tool execution timed out", "TIMEOUT")
         except Exception as exc:
-            return ToolResult("", tool.name, f"{type(exc).__name__}: {exc}", "ERROR")
+            error = f"{type(exc).__name__}: {exc}"[:1000]
+            return ToolResult("", tool.name, error, "ERROR")
 
     async def _execute_calls(self, calls: Sequence[ToolCall]) -> list[ToolResult]:
         prepared: list[tuple[int, ToolCall, ToolSpec]] = []
