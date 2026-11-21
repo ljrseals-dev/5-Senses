@@ -89,6 +89,8 @@ def test_active_teacher_sample_is_conditioned_on_context(tmp_path):
     assert version=="v002" and teacher.calls==1
     corpus=(tmp_path/"work"/"corpus"/"symbolic_music.txt").read_text()
     assert "P072 D004 P074 D004 P064 D004 P065 D004" in corpus
+    metric=json.loads((tmp_path/"work"/"metrics.jsonl").read_text().splitlines()[0])
+    assert metric["status"]=="accepted" and metric["llm_query_rate"]==1.0
 
 def test_uncertainty_flags_unseen_context():
     model=MusicNGramModel(3); model.train_lines(["P060 D004 P062 D004 P064 D004"])
