@@ -57,8 +57,8 @@ def test_clean_directory_rolls_back_prior_outputs_after_later_failure(
     destination = tmp_path / "cleaned"
     review = tmp_path / "review"
     source.mkdir()
-    (source / "a.txt").write_text("first\\n", encoding="utf-8")
-    (source / "b.txt").write_text("second\\n", encoding="utf-8")
+    (source / "a.txt").write_text("first\n", encoding="utf-8")
+    (source / "b.txt").write_text("second\n", encoding="utf-8")
     real_clean_file = cleaning_module.clean_file
     calls = 0
 
@@ -73,8 +73,8 @@ def test_clean_directory_rolls_back_prior_outputs_after_later_failure(
     with pytest.raises(OSError, match="simulated disk failure"):
         clean_directory(source, destination, review_dir=review)
 
-    assert (source / "a.txt").read_text(encoding="utf-8") == "first\\n"
-    assert (source / "b.txt").read_text(encoding="utf-8") == "second\\n"
+    assert (source / "a.txt").read_text(encoding="utf-8") == "first\n"
+    assert (source / "b.txt").read_text(encoding="utf-8") == "second\n"
     assert not destination.exists()
     assert not review.exists()
 
