@@ -1,12 +1,12 @@
 """Integrity manifests and lossless compression for acquired text assets."""
 from __future__ import annotations
 
+import collections.abc
 import hashlib
 import json
 import os
 import re
 import stat
-from collections.abc import Iterable
 from pathlib import Path, PurePosixPath
 
 
@@ -45,7 +45,7 @@ def sha256_file(path: str | Path, *, chunk_size: int = 1024 * 1024) -> str:
     return digest
 
 
-def build_manifest(paths: Iterable[str | Path], root: str | Path) -> dict:
+def build_manifest(paths: collections.abc.Iterable[str | Path], root: str | Path) -> dict:
     """Describe unique regular files relative to root with stable size and SHA-256."""
     raw_root = Path(root)
     if raw_root.is_symlink():
