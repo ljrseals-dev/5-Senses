@@ -65,6 +65,8 @@ def import_manifest(archive: Archive, path: str | Path) -> list[str]:
             "source_license_status": source.get("license_status", "UNVERIFIED_HOLD"),
             "source_revision_status": source.get("revision_status", "UNPINNED"),
             "source_path": record.get("source_path"),
+            "source_path_status": record.get("source_path_status", "UNLOCATED"),
+            "source_blob_sha": record.get("source_blob_sha"),
             "source_revision": record.get("source_revision") or source.get("revision"),
             "language_standard": record.get("language_standard", []),
             "concepts": record.get("concepts", []),
