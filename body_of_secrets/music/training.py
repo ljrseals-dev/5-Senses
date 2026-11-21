@@ -67,7 +67,8 @@ def train_music(seed_directory,*,work_dir="music_data",order=5,max_iterations=0,
                     if len(line.split("#",1)[0].split())>=order]
         if not candidates: break
         # Select the latest context that ends at a note boundary and has a following pitch/chord token.
-        sequence=candidates[-1].split(); context_tokens=None
+        sequence=candidates[-1].split()
+        context_tokens=[] if order == 1 else None
         for target_index in range(order-1,len(sequence)):
             window=sequence[target_index-(order-1):target_index]
             if window and window[-1] in DURATION_BEATS: context_tokens=window
