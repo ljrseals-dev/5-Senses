@@ -10,6 +10,7 @@ from pathlib import Path
 from body_of_secrets import __version__
 from body_of_secrets.archive import Archive
 from body_of_secrets.brain import Engine
+from body_of_secrets.cpp_debug import analyze_cpp_file, report_json
 from body_of_secrets.expert import build_default_expert
 from body_of_secrets.language import NGramModel
 from body_of_secrets.memory import Memory
