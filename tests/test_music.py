@@ -1,6 +1,7 @@
 """Tests for symbolic music learning."""
 import json
 import struct
+import threading
 
 import pytest
 
@@ -208,3 +209,27 @@ def test_midi_rejects_trailing_bytes_outside_declared_tracks(tmp_path):
     path.write_bytes(path.read_bytes()+b"junk")
     with pytest.raises(ValueError,match="trailing data"):
         encode_file(path)
+
+def test_teacher_timeout_does_not_accumulate_blocked_workers(tmp_path):
+    entered=threading.Event()
+    release=threading.Event()
+    finished=threading.Event()
+    class SlowTeacher:
+        def __init__(self):
+            self.calls=0
+        def complete(self,prompt):
+            self.calls+=1
+            entered.set()
+            release.wait()
+            finished.set()
+            return "P060 D004"
+    provider=SlowTeacher()
+    teacher=LoggedTeacher(provider,tmp_path/"late.log",timeout=0.01,retries=3)
+    with pytest.raises(RuntimeError,match="llm_unavailable"):
+        teacher.complete("first")
+    assert entered.wait(1)
+    with pytest.raises(RuntimeError,match="llm_unavailable"):
+        teacher.complete("second")
+    assert provider.calls==1
+    release.set()
+    assert finished.wait(1)
