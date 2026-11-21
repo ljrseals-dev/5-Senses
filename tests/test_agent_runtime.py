@@ -297,3 +297,22 @@ def test_empty_context_compaction_is_rejected():
     events = asyncio.run(collect(runtime))
     assert events[-1].data["status"] == "FAILED"
     assert any(e.kind == "error" for e in events)
+
+
+
+def test_tool_input_schema_is_exposed_to_backend():
+    schema = {
+        "type": "object",
+        "properties": {"query": {"type": "string"}},
+        "required": ["query"],
+    }
+    registry = ToolRegistry()
+    registry.register(ToolSpec("lookup", lambda args: "ok", input_schema=schema))
+    backend = FakeBackend([[ModelEvent("complete")]])
+    asyncio.run(collect(AgentRuntime(backend, registry)))
+    assert backend.calls[0][3][0]["input_schema"] == schema
+
+
+def test_invalid_tool_input_schema_type_is_rejected():
+    with pytest.raises(TypeError, match="input_schema"):
+        ToolSpec("lookup", lambda args: "ok", input_schema=["not", "a", "mapping"])
