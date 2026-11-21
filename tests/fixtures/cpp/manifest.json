@@ -11,11 +11,7 @@
       "expected": "COMPILE_FAIL",
       "sanitizers": [],
       "timeout_seconds": 10,
-      "tags": [
-        "ownership",
-        "unique_ptr",
-        "compile-diagnostic"
-      ],
+      "tags": ["ownership", "unique_ptr", "compile-diagnostic"],
       "sha256": "2fdac4d051d56a51ed7e4724130505c8163d07efb5daa082b2430693ac8751ce"
     },
     {
@@ -25,11 +21,7 @@
       "expected": "LINK_FAIL",
       "sanitizers": [],
       "timeout_seconds": 10,
-      "tags": [
-        "lifetime",
-        "virtual-destructor",
-        "link-diagnostic"
-      ],
+      "tags": ["lifetime", "virtual-destructor", "link-diagnostic"],
       "sha256": "958b2526e4e70737f1f0f92797ddd7ca5474cac359771094274ea11f05b41fe4"
     },
     {
@@ -37,15 +29,9 @@
       "path": "asan/heap_use_after_free.cpp",
       "standard": "c++11",
       "expected": "ASAN_FINDING",
-      "sanitizers": [
-        "address"
-      ],
+      "sanitizers": ["address"],
       "timeout_seconds": 10,
-      "tags": [
-        "lifetime",
-        "heap",
-        "use-after-free"
-      ],
+      "tags": ["lifetime", "heap", "use-after-free"],
       "sha256": "99658174335bab38102ffe51dfa9cb3f4d67ddd80308f443a90502739754d0f0"
     },
     {
@@ -53,14 +39,9 @@
       "path": "ubsan/signed_overflow.cpp",
       "standard": "c++11",
       "expected": "UBSAN_FINDING",
-      "sanitizers": [
-        "undefined"
-      ],
+      "sanitizers": ["undefined"],
       "timeout_seconds": 10,
-      "tags": [
-        "undefined-behavior",
-        "integer-overflow"
-      ],
+      "tags": ["undefined-behavior", "integer-overflow"],
       "sha256": "5bde96da4499fbca5dec41ffd693f2cc2102172a1f365c1712e96a5535ff561b"
     },
     {
@@ -68,17 +49,60 @@
       "path": "clean/unique_ptr_transfer.cpp",
       "standard": "c++11",
       "expected": "CLEAN",
-      "sanitizers": [
-        "address",
-        "undefined"
-      ],
+      "sanitizers": ["address", "undefined"],
       "timeout_seconds": 10,
-      "tags": [
-        "ownership",
-        "unique_ptr",
-        "control"
-      ],
+      "tags": ["ownership", "unique_ptr", "control"],
       "sha256": "548d436f98d9de5778a6ddddf866464b89556ac9e146d061d0f23bcde3e3970c"
+    },
+    {
+      "id": "cpp.forwarding.lvalue-rvalue.v1",
+      "path": "forwarding/forwarding_reference.cpp",
+      "standard": "c++11",
+      "expected": "CLEAN",
+      "sanitizers": ["address", "undefined"],
+      "timeout_seconds": 10,
+      "tags": ["forwarding-reference", "std-forward", "lvalue", "rvalue", "control"],
+      "sha256": "aa2a2a72d467e741888b2f8646175b811e95529d407e7d7db423d346931ecee9"
+    },
+    {
+      "id": "cpp.forwarding.incorrect-move.v1",
+      "path": "forwarding/incorrect_move_forwarding.cpp",
+      "standard": "c++11",
+      "expected": "BEHAVIOR_REPRODUCED",
+      "sanitizers": [],
+      "timeout_seconds": 10,
+      "tags": ["forwarding-reference", "incorrect-std-move", "negative-control", "value-category"],
+      "sha256": "ba5dc670651e93e87ce1ebef93789058502546ea7459be2882aa917b13a6249a"
+    },
+    {
+      "id": "cpp.forwarding.value-category-cxx17.v1",
+      "path": "forwarding/forwarding_value_category_cxx17.cpp",
+      "standard": "c++17",
+      "expected": "CLEAN",
+      "sanitizers": ["address", "undefined"],
+      "timeout_seconds": 10,
+      "tags": ["forwarding-reference", "std-forward", "static-assert", "cxx17", "value-category"],
+      "sha256": "8dcbc08746fd39a6ebea2c768d4a0411702b9698598c4a7d1313f09a5c80dec6"
+    },
+    {
+      "id": "cpp.thread.data-race.v1",
+      "path": "thread/racy_counter.cpp",
+      "standard": "c++11",
+      "expected": "TSAN_FINDING",
+      "sanitizers": ["thread"],
+      "timeout_seconds": 15,
+      "tags": ["concurrency", "data-race", "thread-sanitizer", "negative-control"],
+      "sha256": "60e8881be6cf6d959361960dc04e21c95e9893331ffe12e60a9b4baf52d4cf6f"
+    },
+    {
+      "id": "cpp.thread.mutex-control.v1",
+      "path": "thread/synchronized_counter.cpp",
+      "standard": "c++11",
+      "expected": "CLEAN",
+      "sanitizers": ["thread"],
+      "timeout_seconds": 15,
+      "tags": ["concurrency", "mutex", "thread-sanitizer", "control"],
+      "sha256": "f61bd456332887b20adf48af452201d0d76f173497215d3b0a86c680e1625931"
     }
   ]
 }
