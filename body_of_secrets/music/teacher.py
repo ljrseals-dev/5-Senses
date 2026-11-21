@@ -1,4 +1,5 @@
 """Provider-neutral optional teacher plugin with bounded calls and response audit."""
+# ruff: noqa: E701, E702, E704
 from __future__ import annotations
 import hashlib,importlib.metadata,json,queue,threading
 from datetime import datetime,timezone
