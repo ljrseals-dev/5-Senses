@@ -45,8 +45,12 @@ class SnapshotStore:
         directory=self.root/version
         metadata=json.loads((directory/"metadata.json").read_text(encoding="utf-8"))
         if metadata.get("schema")!=1 or metadata.get("version")!=version: raise ValueError("snapshot metadata mismatch")
+        expected_files={"ngram_music.json","hopfield_patterns.json","corpus.txt"}
+        if set(metadata.get("sha256",{}))!=expected_files: raise ValueError("snapshot file manifest mismatch")
         for filename,expected in metadata["sha256"].items():
             if sha256_file(directory/filename)!=expected: raise ValueError(f"snapshot integrity failure: {filename}")
+        if (directory/"corpus_hash.txt").read_text(encoding="ascii").strip()!=metadata["sha256"]["corpus.txt"]:
+            raise ValueError("snapshot corpus hash sidecar mismatch")
         return metadata
     def rollback(self,version,corpus_path):
         self.verify(version); target=Path(corpus_path); target.parent.mkdir(parents=True,exist_ok=True)
