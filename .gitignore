@@ -62,6 +62,7 @@ compile_commands.json
 secrets/
 
 # Data (keep structure, ignore large corpora)
+music_data/
 data/raw/
 data/processed/
 *.db

@@ -1,0 +1,100 @@
+"""Atomic, hash-verified snapshots and rollback."""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import shutil
+import tempfile
+import threading
+from datetime import datetime, timezone
+from pathlib import Path
+
+from .hopfield import MotifMemory
+from .ngram import MusicNGramModel
+
+_SNAPSHOT_LOCK = threading.RLock()
+
+def sha256_file(path):
+    h=hashlib.sha256()
+    with Path(path).open("rb") as f:
+        for block in iter(lambda:f.read(1024*1024),b""): h.update(block)
+    return h.hexdigest()
+
+class SnapshotStore:
+    def __init__(self,root):
+        self.root=Path(root); self.root.mkdir(parents=True,exist_ok=True); self.current_file=self.root/"CURRENT"
+    def commit(self,model,memory,corpus_path,*,llm_samples=0):
+        if not isinstance(llm_samples,int) or isinstance(llm_samples,bool) or llm_samples < 0:
+            raise ValueError("llm_samples must be a non-negative integer")
+        with _SNAPSHOT_LOCK:
+            return self._commit(model,memory,corpus_path,llm_samples=llm_samples)
+    def _commit(self,model,memory,corpus_path,*,llm_samples=0):
+        versions=sorted((p.name for p in self.root.glob("v[0-9]*")
+                         if p.is_dir() and p.name[1:].isdigit()), key=lambda value:int(value[1:]))
+        name=f"v{(int(versions[-1][1:])+1) if versions else 1:03d}"
+        parent=self.current_file.read_text(encoding="ascii").strip() if self.current_file.exists() else (versions[-1] if versions else None)
+        if parent: self.verify(parent)
+        temp=Path(tempfile.mkdtemp(prefix=".snapshot-",dir=self.root))
+        try:
+            model.save(temp/"ngram_music.json"); memory.save(temp/"hopfield_patterns.json")
+            shutil.copyfile(corpus_path,temp/"corpus.txt")
+            provenance=Path(corpus_path).with_name("provenance.jsonl")
+            if provenance.exists(): shutil.copyfile(provenance,temp/"provenance.jsonl")
+            else: (temp/"provenance.jsonl").write_text("",encoding="utf-8")
+            files=("ngram_music.json","hopfield_patterns.json","corpus.txt","provenance.jsonl")
+            hashes={f:sha256_file(temp/f) for f in files}
+            (temp/"corpus_hash.txt").write_text(hashes["corpus.txt"]+"\n",encoding="ascii")
+            corpus_lines=sum(1 for x in (temp/"corpus.txt").read_text(encoding="utf-8").splitlines()
+                             if x.strip() and not x.lstrip().startswith("#"))
+            metadata={"schema":1,"version":name,"parent":parent,
+                      "timestamp":datetime.now(timezone.utc).isoformat(),"corpus_lines":corpus_lines,
+                      "llm_samples":llm_samples,"sha256":hashes}
+            (temp/"metadata.json").write_text(json.dumps(metadata,sort_keys=True,indent=2)+"\n",encoding="utf-8")
+            os.replace(temp,self.root/name)
+            pointer=self.root/".CURRENT.tmp"; pointer.write_text(name+"\n",encoding="ascii")
+            os.replace(pointer,self.current_file)
+            return name
+        except Exception:
+            shutil.rmtree(temp,ignore_errors=True); raise
+    def verify(self,version):
+        if not isinstance(version,str) or not version.startswith("v") or not version[1:].isdigit(): raise ValueError("invalid snapshot version")
+        directory=self.root/version
+        metadata=json.loads((directory/"metadata.json").read_text(encoding="utf-8"))
+        if not isinstance(metadata,dict) or metadata.get("schema")!=1 or metadata.get("version")!=version:
+            raise ValueError("snapshot metadata mismatch")
+        if (not isinstance(metadata.get("corpus_lines"),int) or isinstance(metadata.get("corpus_lines"),bool)
+            or metadata["corpus_lines"] < 0 or not isinstance(metadata.get("llm_samples"),int)
+            or isinstance(metadata.get("llm_samples"),bool) or metadata["llm_samples"] < 0):
+            raise ValueError("invalid snapshot metadata counts")
+        expected_files={"ngram_music.json","hopfield_patterns.json","corpus.txt","provenance.jsonl"}
+        hashes=metadata.get("sha256")
+        if not isinstance(hashes,dict) or set(hashes)!=expected_files:
+            raise ValueError("snapshot file manifest mismatch")
+        for filename,expected in hashes.items():
+            if not isinstance(expected,str) or len(expected)!=64 or sha256_file(directory/filename)!=expected: raise ValueError(f"snapshot integrity failure: {filename}")
+        if (directory/"corpus_hash.txt").read_text(encoding="ascii").strip()!=metadata["sha256"]["corpus.txt"]:
+            raise ValueError("snapshot corpus hash sidecar mismatch")
+        corpus_lines=sum(1 for line in (directory/"corpus.txt").read_text(encoding="utf-8").splitlines()
+                         if line.strip() and not line.lstrip().startswith("#"))
+        if corpus_lines != metadata["corpus_lines"]:
+            raise ValueError("snapshot corpus line count mismatch")
+        return metadata
+    def rollback(self,version,corpus_path):
+        with _SNAPSHOT_LOCK:
+            return self._rollback(version,corpus_path)
+    def _rollback(self,version,corpus_path):
+        self.verify(version); target=Path(corpus_path); target.parent.mkdir(parents=True,exist_ok=True)
+        temp=target.with_name(target.name+".rollback.tmp")
+        shutil.copyfile(self.root/version/"corpus.txt",temp); os.replace(temp,target)
+        manifest_target=target.with_name("provenance.jsonl")
+        manifest_temp=manifest_target.with_name(manifest_target.name+".rollback.tmp")
+        shutil.copyfile(self.root/version/"provenance.jsonl",manifest_temp)
+        os.replace(manifest_temp,manifest_target)
+        pointer=self.root/".CURRENT.tmp"; pointer.write_text(version+"\n",encoding="ascii")
+        os.replace(pointer,self.current_file)
+    def load(self,version=None):
+        selected=version or (self.current_file.read_text(encoding="ascii").strip() if self.current_file.exists() else "")
+        if not selected: raise FileNotFoundError("no current music snapshot")
+        self.verify(selected); directory=self.root/selected
+        return MusicNGramModel.load(directory/"ngram_music.json"),MotifMemory.load(directory/"hopfield_patterns.json")

@@ -8,7 +8,6 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-
 _TOKEN_RE = re.compile(r"[a-z0-9']+", re.IGNORECASE)
 
 
@@ -17,13 +16,13 @@ def tokenize(text: str) -> list[str]:
 
 
 class NGramModel:
-    """Character- or word-level n-gram model with Laplace smoothing."""
+    """Character-, word-, or exact-token n-gram model with Laplace smoothing."""
 
     def __init__(self, n: int = 3, level: str = "word"):
-        if n < 1:
-            raise ValueError("n must be >= 1")
-        if level not in ("word", "char"):
-            raise ValueError("level must be 'word' or 'char'")
+        if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+            raise ValueError("n must be a positive integer")
+        if level not in ("word", "char", "token"):
+            raise ValueError("level must be 'word', 'char', or 'token'")
         self.n = n
         self.level = level
         self.counts: dict[tuple[str, ...], dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -34,6 +33,8 @@ class NGramModel:
     def _tokens(self, text: str) -> list[str]:
         if self.level == "char":
             return list(text.lower())
+        if self.level == "token":
+            return text.split()
         return tokenize(text)
 
     def train(self, texts: list[str]) -> None:
@@ -83,13 +84,18 @@ class NGramModel:
         return math.exp(-logp / N)
 
     def generate(self, length: int = 50, seed: str | None = None) -> str:
+        if not isinstance(length, int) or isinstance(length, bool) or length < 0:
+            raise ValueError("length must be a non-negative integer")
         if not self._trained or not self.vocab:
             return ""
 
         # Start from a random observed context or the provided seed
         if seed:
             tokens = self._tokens(seed)
-            if len(tokens) >= self.n - 1:
+            context: tuple[str, ...]
+            if self.n == 1:
+                context = ()
+            elif len(tokens) >= self.n - 1:
                 context = tuple(tokens[-(self.n - 1) :])
             else:
                 context = tuple(tokens) + ("",) * (self.n - 1 - len(tokens))
@@ -109,15 +115,20 @@ class NGramModel:
                 weights = [c + 0.1 for _, c in items]
                 next_tok = random.choices([t for t, _ in items], weights=weights, k=1)[0]
             output.append(next_tok)
-            context = tuple(output[-(self.n - 1) :])
+            context = () if self.n == 1 else tuple(output[-(self.n - 1) :])
 
         if self.level == "char":
             return "".join(output)
         return " ".join(output)
 
     def most_likely_continuations(self, prefix: str, k: int = 5) -> list[tuple[str, float]]:
+        if not isinstance(k, int) or isinstance(k, bool) or k < 0:
+            raise ValueError("k must be a non-negative integer")
         tokens = self._tokens(prefix)
-        if len(tokens) < self.n - 1:
+        context: tuple[str, ...]
+        if self.n == 1:
+            context = ()
+        elif len(tokens) < self.n - 1:
             context = tuple(tokens)
         else:
             context = tuple(tokens[-(self.n - 1) :])

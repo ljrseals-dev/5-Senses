@@ -29,7 +29,7 @@ def test_clean_file_preserves_raw_and_writes_hashes(tmp_path: Path) -> None:
 
     result = clean_file(source, destination, review_path=review)
 
-    assert source.read_text(encoding="utf-8") == raw
+    assert source.read_bytes() == raw.encode("utf-8")
     assert result.raw_sha256 == hashlib.sha256(raw.encode()).hexdigest()
     assert destination.read_text(encoding="utf-8") == "A line\n"
     assert review.exists()

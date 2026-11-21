@@ -13,6 +13,7 @@ from body_of_secrets.brain import Engine
 from body_of_secrets.expert import build_default_expert
 from body_of_secrets.language import NGramModel
 from body_of_secrets.memory import Memory
+from body_of_secrets.music.cli import main as music_main
 from body_of_secrets.neural import demo_hopfield, demo_xor
 from body_of_secrets.scouting.cleaning import clean_directory
 
@@ -181,6 +182,10 @@ def _cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_music(args: argparse.Namespace) -> int:
+    return music_main(args.music_args)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="body-of-secrets",
@@ -230,7 +235,7 @@ def main(argv: list[str] | None = None) -> int:
     p_ng = sub.add_parser("ngram", help="Classical n-gram language model")
     p_ng.add_argument("--train", help="File path or raw text to train on")
     p_ng.add_argument("--n", type=int, default=3)
-    p_ng.add_argument("--level", choices=["word", "char"], default="word")
+    p_ng.add_argument("--level", choices=["word", "char", "token"], default="word")
     p_ng.add_argument("--generate", action="store_true")
     p_ng.add_argument("--length", type=int, default=40)
     p_ng.add_argument("--seed", default=None)
@@ -240,6 +245,10 @@ def main(argv: list[str] | None = None) -> int:
     p_nn = sub.add_parser("neural", help="Run classical neural demos")
     p_nn.add_argument("demo", choices=["hopfield", "mlp"])
     p_nn.set_defaults(func=_cmd_neural)
+
+    p_music = sub.add_parser("music", help="Symbolic music encoding, training, prediction and snapshots")
+    p_music.add_argument("music_args", nargs=argparse.REMAINDER)
+    p_music.set_defaults(func=_cmd_music)
 
     p_st = sub.add_parser("status", help="Show system status")
     p_st.set_defaults(func=_cmd_status)
