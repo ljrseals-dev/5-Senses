@@ -382,7 +382,7 @@ class AgentRuntime:
                             "error": type(exc).__name__,
                         })
             except Exception as exc:
-                state.last_error = f"{type(exc).__name__}: {exc}"
+                state.last_error = f"{type(exc).__name__}: {exc}"[:1000]
                 state.status = AgentStatus.FAILED
                 state.transitions.append("WAITING_FOR_MODEL->FAILED")
                 yield AgentEvent("error", state.turn, {"error": state.last_error})
