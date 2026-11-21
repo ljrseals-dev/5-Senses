@@ -569,7 +569,7 @@ class AgentRuntime:
     def _validate_compacted_messages(messages: Any) -> None:
         if not isinstance(messages, list) or not messages:
             raise TypeError("context compactor must return a non-empty list of messages")
-        pending_calls: set[str] = set()
+        pending_calls: dict[str, str] = {}
         seen_calls: set[str] = set()
         for index, message in enumerate(messages):
             if not isinstance(message, dict):
@@ -599,19 +599,25 @@ class AgentRuntime:
                         raise ValueError("compacted tool call ID must be non-empty")
                     if call_id in seen_calls:
                         raise ValueError("compacted transcript contains duplicate tool call IDs")
-                    if not isinstance(function, Mapping) or not isinstance(
-                        function.get("name"), str
+                    if call.get("type") != "function":
+                        raise ValueError("compacted tool call type must be 'function'")
+                    if (
+                        not isinstance(function, Mapping)
+                        or not isinstance(function.get("name"), str)
+                        or not function.get("name", "").strip()
                     ):
                         raise ValueError("compacted tool call requires a named function")
                     if not isinstance(function.get("arguments"), Mapping):
                         raise ValueError("compacted tool call arguments must be an object")
                     seen_calls.add(call_id)
-                    pending_calls.add(call_id)
+                    pending_calls[call_id] = function["name"]
             elif message["role"] == "tool":
                 call_id = message.get("tool_call_id")
                 if not isinstance(call_id, str) or call_id not in pending_calls:
                     raise ValueError("compacted transcript contains an orphan tool result")
-                pending_calls.remove(call_id)
+                if message.get("name") != pending_calls[call_id]:
+                    raise ValueError("compacted tool result name does not match its call")
+                pending_calls.pop(call_id)
         if pending_calls:
             raise ValueError("compacted transcript contains unanswered tool calls")
 
