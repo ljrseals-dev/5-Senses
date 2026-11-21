@@ -201,3 +201,10 @@ def test_abc_zero_rest_duration_denominator_is_rejected(tmp_path):
     path.write_text("X:1\nL:1/4\nK:C\nz1/0 D |\n")
     with pytest.raises(ValueError,match="denominator must be non-zero"):
         encode_file(path)
+
+def test_midi_rejects_trailing_bytes_outside_declared_tracks(tmp_path):
+    path=tmp_path/"trailing.mid"
+    _midi(path)
+    path.write_bytes(path.read_bytes()+b"junk")
+    with pytest.raises(ValueError,match="trailing data"):
+        encode_file(path)
