@@ -22,8 +22,14 @@ def validate_tokens(value,*,min_tokens=4,max_tokens=64,max_interval=12,
     if len(tokens)>max_tokens: errors.append("sequence_too_long")
     i,previous_pitch,beat_window,event_count=0,None,0.,0
     while i<len(tokens):
-        if tokens[i] in ("B","DRST"):
-            event_count+=1; i+=1; continue
+        if tokens[i]=="B":
+            beat_window=0.; event_count=0; i+=1; continue
+        if tokens[i]=="DRST":
+            beat_window+=.25; event_count+=1; i+=1
+            if beat_window>=4:
+                if event_count>max_events_per_four_beats: errors.append("rhythm_density_exceeded")
+                beat_window%=4; event_count=0
+            continue
         chord=tokens[i]=="CHD"; pitches=[]; durations=[]
         if chord:
             # CHD prefixes each simultaneous tone, making the end of a chord unambiguous.
