@@ -23,7 +23,7 @@ def test_chord_group_does_not_absorb_next_melody_note():
     assert validate_tokens("CHD P060 D004 CHD P067 D004 P069 D004").valid
 def test_midi_encoder_marks_simultaneous_notes_as_a_chord(tmp_path):
     path=tmp_path/"chord.mid"
-    track=b"\\x00\\x90\\x3c\\x64\\x00\\x90\\x43\\x64"+_vlq(480)+b"\\x80\\x3c\\x00\\x00\\x80\\x43\\x00\\x00\\xff\\x2f\\x00"
+    track=bytes([0,0x90,60,100,0,0x90,67,100])+_vlq(480)+bytes([0x80,60,0,0,0x80,67,0,0,0xff,0x2f,0])
     path.write_bytes(b"MThd"+struct.pack(">IHHH",6,0,1,480)+b"MTrk"+struct.pack(">I",len(track))+track)
     assert encode_file(path)=="CHD P060 D004 CHD P067 D004"
 
