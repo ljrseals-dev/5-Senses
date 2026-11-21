@@ -26,7 +26,7 @@ class MusicNGramModel(NGramModel):
     def distribution(self,context):
         tokens=self._tokens(context) if isinstance(context,str) else list(context)
         if len(tokens)<self.n-1 or not self.vocab: return {}
-        key=tuple(tokens[-(self.n-1):])
+        key=() if self.n == 1 else tuple(tokens[-(self.n-1):])
         counts=self.counts.get(key)
         if not counts: return {}
         total=self.context_totals[key]+len(self.vocab)
@@ -41,7 +41,8 @@ class MusicNGramModel(NGramModel):
         for line in lines:
             tokens=strip_comments(line).split()
             for i in range(self.n-1,len(tokens)):
-                probabilities=self.distribution(tokens[i-self.n+1:i])
+                context = [] if self.n == 1 else tokens[i-self.n+1:i]
+                probabilities=self.distribution(context)
                 probability=probabilities.get(tokens[i],fallback)
                 logp+=math.log(max(probability,1e-300)); count+=1
         return math.exp(-logp/count) if count else float("inf")
