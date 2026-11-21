@@ -177,6 +177,8 @@ def _finding(stderr: str, sanitizer: str) -> bool:
 def _run_one(source: Path, compiler: str, standard: str, sanitizer: str | None,
              timeout: int, work: Path) -> dict[str, Any]:
     flags = ["-Wall", "-Wextra", "-Wpedantic", "-O0"]
+    if sanitizer == "thread":
+        flags.append("-pthread")
     if sanitizer:
         flags.extend(_sanitizer_flags(sanitizer))
     obj = work / "fixture.o"
