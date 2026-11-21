@@ -30,7 +30,7 @@ class ModelCandidate:
     tags: tuple[str, ...] = ()
 
     @classmethod
-    def from_api(cls, item: dict[str, Any]) -> "ModelCandidate":
+    def from_api(cls, item: dict[str, Any]) -> ModelCandidate:
         repo_id = item.get("id")
         if not isinstance(repo_id, str) or not repo_id.strip():
             raise ValueError("model catalog item is missing a valid id")
