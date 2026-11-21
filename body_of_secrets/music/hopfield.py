@@ -12,7 +12,8 @@ from body_of_secrets.neural import HopfieldNetwork
 def project_motif(motif: tuple[str, ...], dimensions: int = 128) -> list[int]:
     if not isinstance(dimensions,int) or isinstance(dimensions,bool) or dimensions < 8: raise ValueError("dimensions must be an integer >= 8")
     seed = " ".join(motif).encode()
-    bits, counter = [], 0
+    bits: list[int] = []
+    counter = 0
     while len(bits) < dimensions:
         digest = hashlib.sha256(b"5-senses-music-v1\0"+seed+counter.to_bytes(4,"big")).digest()
         for byte in digest:
