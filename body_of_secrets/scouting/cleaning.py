@@ -13,7 +13,7 @@ import unicodedata
 from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable
+from collections.abc import Iterable
 
 _TOKEN_RE = re.compile(r"[^\W_]+(?:['’][^\W_]+)?", re.UNICODE)
 _CONFUSIONS = (
@@ -111,7 +111,7 @@ class EMOCRRanker:
         self.priors: dict[str, float] = {}
         self.channel: dict[tuple[str, str], float] = {}
 
-    def fit(self, texts: Iterable[str]) -> "EMOCRRanker":
+    def fit(self, texts: Iterable[str]) -> EMOCRRanker:
         counts: Counter[str] = Counter()
         for text in texts:
             counts.update(token.casefold() for token in _TOKEN_RE.findall(text))
