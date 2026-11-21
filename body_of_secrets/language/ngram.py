@@ -17,7 +17,7 @@ def tokenize(text: str) -> list[str]:
 
 
 class NGramModel:
-    """Character- or word-level n-gram model with Laplace smoothing."""
+    """Character-, word-, or exact-token n-gram model with Laplace smoothing."""
 
     def __init__(self, n: int = 3, level: str = "word"):
         if n < 1:
