@@ -36,6 +36,17 @@ def _thaw_json(value: Any) -> Any:
     return value
 
 
+def _validate_json_keys(value: Any) -> None:
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise ValueError("JSON object keys must be strings")
+            _validate_json_keys(item)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _validate_json_keys(item)
+
+
 class AgentStatus(str, Enum):
     READY = "READY"
     RUNNING = "RUNNING"
@@ -71,6 +82,7 @@ class ToolSpec:
         if not isinstance(self.input_schema, Mapping):
             raise TypeError("input_schema must be a mapping")
         try:
+            _validate_json_keys(self.input_schema)
             schema_json = json.dumps(dict(self.input_schema), allow_nan=False)
         except (TypeError, ValueError) as exc:
             raise ValueError("input_schema must contain only JSON-compatible values") from exc
@@ -162,6 +174,7 @@ class ToolCall:
         if not isinstance(self.arguments, Mapping):
             raise TypeError("tool call arguments must be a mapping")
         try:
+            _validate_json_keys(self.arguments)
             arguments_json = json.dumps(dict(self.arguments), allow_nan=False)
         except (TypeError, ValueError) as exc:
             raise ValueError("tool call arguments must contain only JSON-compatible values") from exc
