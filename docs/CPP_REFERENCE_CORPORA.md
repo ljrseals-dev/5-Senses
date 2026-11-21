@@ -13,10 +13,17 @@ not as model weights:
 `data/cpp_reference_corpora.json` is a metadata-only seed manifest. It contains
 stable local record IDs, source repository URLs, concept tags, candidate
 language standards, explanations, hypotheses, and discriminating tests. It
-intentionally does not claim that an example path or source revision has been
-verified: those fields remain null until a repository inventory pins them.
+pins each repository snapshot to a commit SHA, but does not claim that an
+individual example path has been located: source paths remain null until the
+file-level inventory is complete.
 
-All records are marked `UNVERIFIED_HOLD`. The integration does not fetch,
+All records are marked `UNVERIFIED_HOLD`. The pinned repository snapshots are
+`BartVandewoestyne/Cpp` at `376ae463ee95ee5723e74322b7fa25a59e972ac9` and
+`BartVandewoestyne/Effective-Modern-Cpp` at
+`a1d8f84ee679a92fade7b4ca3fa46f9f48886539`. Neither repository tree contains
+LICENSE, COPYING, NOTICE, or COPYRIGHT files, and GitHub reports no detected
+repository license for either. This is an unresolved rights status, not proof
+that every file has identical rights. The integration does not fetch,
 copy, redistribute, compile, or execute third-party source. The
 Effective-Modern-Cpp README describes the repository as the author's personal
 implementation and says it is not officially linked to the book; that statement
