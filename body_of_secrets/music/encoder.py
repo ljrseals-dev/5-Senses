@@ -46,17 +46,27 @@ def _midi(path: Path) -> str:
             status = track[cur]
             if status < 128:
                 if not running: raise ValueError("running status without prior status")
+                status = running
             else:
                 cur += 1
                 if status < 240: running = status
+                else: running = 0
             if status == 255:
                 if cur >= len(track): raise ValueError("truncated MIDI meta event")
-                cur += 1; length, cur = _vlq(track, cur); cur += length
+                cur += 1; length, cur = _vlq(track, cur)
+                if cur + length > len(track): raise ValueError("truncated MIDI meta event payload")
+                cur += length
                 continue
             if status in (240, 247):
-                length, cur = _vlq(track, cur); cur += length; running = 0
+                length, cur = _vlq(track, cur)
+                if cur + length > len(track): raise ValueError("truncated MIDI system-exclusive payload")
+                cur += length; running = 0
                 continue
+            if status >= 240:
+                raise ValueError(f"unsupported MIDI system status: 0x{status:02x}")
             kind, channel = status & 240, status & 15
+            if kind not in (128, 144, 160, 176, 192, 208, 224):
+                raise ValueError(f"unsupported MIDI channel status: 0x{status:02x}")
             width = 1 if kind in (192, 208) else 2
             if cur + width > len(track): raise ValueError("truncated MIDI channel event")
             pitch = track[cur]; velocity = track[cur+1] if width == 2 else 0; cur += width
