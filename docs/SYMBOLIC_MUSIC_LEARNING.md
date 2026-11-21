@@ -17,7 +17,7 @@ body-of-secrets music predict --work-dir music_data --context "P060 D004 P064 D0
 body-of-secrets music rollback v001 --work-dir music_data
 \`\`\`
 
-Use --teacher-plugin PLUGIN_NAME with train to enable an installed plugin from Python entry-point group body_of_secrets.music_teachers. It must implement complete(prompt: str) -> str or be a zero-argument factory returning that interface. No provider SDK/network dependency is bundled. LoggedTeacher logs raw response, timestamp, prompt hash and errors to llm_responses.log; timeout/retries are configurable.
+Use --teacher-plugin PLUGIN_NAME with train to enable an installed plugin from Python entry-point group body_of_secrets.music_teachers. It must implement complete(prompt: str) -> str or be a zero-argument factory returning that interface. No provider SDK/network dependency is bundled. LoggedTeacher logs raw response, timestamp, prompt hash and errors to llm_responses.log; exception retries and timeouts are configurable. A timed-out call is not retried because the in-flight provider request cannot be cancelled safely; its daemon worker cannot hold up process shutdown.
 
 ## Provenance and snapshots
 
