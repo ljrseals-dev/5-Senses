@@ -29,10 +29,12 @@ def _midi(path: Path) -> str:
     if hlen < 6 or len(data) < 8 + hlen:
         raise ValueError("invalid MIDI header")
     fmt, tracks, division = struct.unpack(">HHH", data[8:14])
-    if fmt not in (0, 1) or division == 0 or division & 0x8000:
+    if fmt not in (0, 1) or tracks < 1 or (fmt == 0 and tracks != 1) or division == 0 or division & 0x8000:
         raise ValueError("only PPQ-based MIDI formats 0 and 1 are supported")
     pos, active, notes = 8 + hlen, defaultdict(deque), []
     for _ in range(tracks):
+        if pos + 8 > len(data):
+            raise ValueError("truncated MIDI track header")
         if data[pos:pos+4] != b"MTrk":
             raise ValueError("missing MIDI track")
         size = struct.unpack(">I", data[pos+4:pos+8])[0]
@@ -42,7 +44,8 @@ def _midi(path: Path) -> str:
         cur = tick = running = 0
         while cur < len(track):
             delta, cur = _vlq(track, cur); tick += delta
-            if cur >= len(track): break
+            if cur >= len(track):
+                raise ValueError("MIDI track ends with an incomplete event")
             status = track[cur]
             if status < 128:
                 if not running: raise ValueError("running status without prior status")
@@ -69,7 +72,10 @@ def _midi(path: Path) -> str:
                 raise ValueError(f"unsupported MIDI channel status: 0x{status:02x}")
             width = 1 if kind in (192, 208) else 2
             if cur + width > len(track): raise ValueError("truncated MIDI channel event")
-            pitch = track[cur]; velocity = track[cur+1] if width == 2 else 0; cur += width
+            values = track[cur:cur+width]
+            if any(value >= 128 for value in values):
+                raise ValueError("MIDI data byte has its status bit set")
+            pitch = values[0]; velocity = values[1] if width == 2 else 0; cur += width
             key = (channel, pitch)
             if kind == 144 and velocity:
                 active[key].append(tick)
