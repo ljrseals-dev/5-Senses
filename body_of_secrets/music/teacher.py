@@ -28,6 +28,8 @@ class LoggedTeacher:
         if timeout<=0 or retries<0: raise ValueError("timeout must be positive and retries non-negative")
         self.teacher,self.log_path,self.timeout,self.retries=teacher,Path(log_path),timeout,retries
         self.lock=threading.Lock()
+        self._worker_lock=threading.Lock()
+        self._inflight=False
     def _append_log(self,prompt_hash,raw,error=None):
         self.log_path.parent.mkdir(parents=True,exist_ok=True)
         record={"timestamp":datetime.now(timezone.utc).isoformat(),"prompt_hash":prompt_hash,
@@ -35,21 +37,35 @@ class LoggedTeacher:
         with self.lock,self.log_path.open("a",encoding="utf-8",newline="\n") as stream:
             stream.write(json.dumps(record,ensure_ascii=False,sort_keys=True)+"\n")
     def _call(self,prompt,prompt_hash):
+        with self._worker_lock:
+            if self._inflight:
+                raise RuntimeError("previous music teacher request is still running")
+            self._inflight=True
         result=queue.Queue(maxsize=1); state_lock=threading.Lock(); state={"timed_out":False}
         def invoke():
             try:
                 value=self.teacher.complete(prompt); ok=True
             except Exception as exc:
                 value=exc; ok=False
-            with state_lock:
-                if state["timed_out"]:
-                    raw=value if ok and isinstance(value,str) else ""
-                    error="late_response_after_timeout" if ok else f"late_error_after_timeout: {type(value).__name__}"
-                    self._append_log(prompt_hash,raw,error)
-                else:
-                    result.put((ok,value))
+            try:
+                with state_lock:
+                    if state["timed_out"]:
+                        raw=value if ok and isinstance(value,str) else ""
+                        error="late_response_after_timeout" if ok else f"late_error_after_timeout: {type(value).__name__}"
+                        self._append_log(prompt_hash,raw,error)
+                    else:
+                        result.put((ok,value))
+            finally:
+                with self._worker_lock:
+                    self._inflight=False
         # A daemon worker ensures a hung optional plugin cannot hold process shutdown.
-        threading.Thread(target=invoke,name="music-teacher",daemon=True).start()
+        worker=threading.Thread(target=invoke,name="music-teacher",daemon=True)
+        try:
+            worker.start()
+        except Exception:
+            with self._worker_lock:
+                self._inflight=False
+            raise
         try:
             ok,value=result.get(timeout=self.timeout)
         except queue.Empty as exc:
