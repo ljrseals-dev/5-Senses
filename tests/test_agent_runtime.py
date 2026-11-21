@@ -388,3 +388,22 @@ def test_tool_call_arguments_are_copied_and_json_validated():
     assert call.arguments == {"query": ["one", "two"]}
     with pytest.raises(ValueError, match="JSON-compatible"):
         ToolCall("call-2", "lookup", {"bad": object()})
+
+
+
+def test_unclassified_tool_is_denied_by_default():
+    called = []
+    async def maybe_mutating(args):
+        called.append(args)
+        return "ran"
+
+    registry = ToolRegistry()
+    registry.register(ToolSpec("unclassified", maybe_mutating))
+    backend = FakeBackend([
+        [ModelEvent("tool_call", tool_call=ToolCall("c1", "unclassified", {}))],
+        [ModelEvent("complete")],
+    ])
+    events = asyncio.run(collect(AgentRuntime(backend, registry)))
+    result = next(event for event in events if event.kind == "tool_result")
+    assert result.data["status"] == "DENIED"
+    assert called == []
