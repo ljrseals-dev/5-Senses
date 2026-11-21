@@ -233,3 +233,20 @@ def test_teacher_timeout_does_not_accumulate_blocked_workers(tmp_path):
     assert provider.calls==1
     release.set()
     assert finished.wait(1)
+
+def test_unigram_music_training_can_query_active_teacher(tmp_path):
+    seed=tmp_path/"seed"
+    seed.mkdir()
+    (seed/"scale.abc").write_text("X:1\nL:1/4\nK:C\nC D E F G A B c |\n")
+    class Teacher:
+        def __init__(self):
+            self.calls=0
+        def complete(self,prompt):
+            self.calls+=1
+            return "P072 D004 P074 D004"
+    provider=Teacher()
+    version=train_music(seed,work_dir=tmp_path/"work",order=1,max_iterations=1,
+                        teacher=LoggedTeacher(provider,tmp_path/"teacher.log",timeout=1,retries=0),
+                        entropy_threshold=0)
+    assert version=="v002"
+    assert provider.calls==1
