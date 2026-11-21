@@ -9,6 +9,7 @@ from body_of_secrets.language.ngram import NGramModel
 
 from .tokens import strip_comments
 
+
 class MusicNGramModel(NGramModel):
     """Use the repository's existing n-gram counts with case-sensitive tokenization."""
     def __init__(self,order:int=5):
@@ -67,10 +68,10 @@ class MusicNGramModel(NGramModel):
             raise ValueError("invalid music n-gram vocabulary")
         model=cls(order); model.vocab=set(data["vocab"])
         if not isinstance(data.get("counts"),list):
-            raise ValueError("invalid music n-gram counts")
+            raise TypeError("invalid music n-gram counts")
         for item in data["counts"]:
             if not isinstance(item,dict) or not isinstance(item.get("context"),list) or not isinstance(item.get("next"),dict):
-                raise ValueError("invalid music n-gram count entry")
+                raise TypeError("invalid music n-gram count entry")
             if (len(item["context"]) != max(0,model.n-1)
                 or any(not isinstance(t,str) or t not in model.vocab for t in item["context"])):
                 raise ValueError("invalid music n-gram context")
