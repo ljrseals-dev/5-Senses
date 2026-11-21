@@ -1,5 +1,5 @@
 """Tests for symbolic music learning."""
-# ruff: noqa: E701, E702, E704
+# ruff: noqa: E401, E701, E702, E704
 import json,struct
 from body_of_secrets.language import NGramModel
 from body_of_secrets.music.corpus import CorpusWriter
