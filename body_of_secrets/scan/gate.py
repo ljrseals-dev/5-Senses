@@ -69,9 +69,13 @@ class IngestGate:
         allowed_extensions = {".txt", ".md", ".rst", ".text", ".pdf"}
         if declared_ext.lower() not in allowed_extensions:
             raise IngestRejected(f"unsupported declared extension: {declared_ext or 'none'}")
+        if declared_ext.lower() == ".pdf" and magic != "application/pdf":
+            raise IngestRejected(
+                f"extension/signature mismatch: .pdf declared but detected {magic}"
+            )
         if magic != "text/plain":
             raise IngestRejected(
-                f"unsupported or mismatched document type: {magic} ({declared_ext or 'no extension'})"
+                f"unsupported document type for text archive: {magic}"
             )
         # Scan an immutable private snapshot, not the caller-controlled path.
         try:
