@@ -107,7 +107,7 @@ def test_unavailable_scanner_fails_closed_without_database_mutation():
 def test_elf_payload_disguised_as_pdf_is_rejected_before_database_write():
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "document.pdf"
-        path.write_bytes(b"\\x7fELF" + b"fake executable")
+        path.write_bytes(bytes([0x7f]) + b"ELF" + b"fake executable")
         with Archive(Path(tmp) / "test.db", scanner=CleanTextScanner()) as archive:
             try:
                 archive.import_text_file(path)
