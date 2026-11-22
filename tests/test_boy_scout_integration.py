@@ -4,6 +4,7 @@ from pathlib import Path
 
 from body_of_secrets.archive import Archive
 from body_of_secrets.scan import ScanRecord
+from body_of_secrets.scouting.integration import import_text_collection
 
 
 class CleanTextScanner:
@@ -16,7 +17,6 @@ class CleanTextScanner:
             declared_extension=declared_ext,
             scanned_at=datetime.now(timezone.utc).isoformat(),
         )
-from body_of_secrets.scouting.integration import import_text_collection
 
 
 def test_import_collection_is_repeat_safe(tmp_path: Path) -> None:
