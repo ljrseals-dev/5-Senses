@@ -7,7 +7,6 @@ RESEARCH, AUDIT, and HYBRID may use an explicitly permitted provider.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from body_of_secrets import __version__, __disclaimer__
 from body_of_secrets.archive import Archive
