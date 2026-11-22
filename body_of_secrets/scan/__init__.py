@@ -1,9 +1,12 @@
-"""Document-ingest security primitives.
+"""Document-ingest security primitives."""
 
-Scanning is not enabled by this package yet. The current release only defines
-the immutable provenance record used by the forthcoming ingest gate.
-"""
-
+from .gate import IngestGate, IngestRejected, Scanner, UnavailableScanner
 from .models import ScanRecord
 
-__all__ = ["ScanRecord"]
+__all__ = [
+    "IngestGate",
+    "IngestRejected",
+    "ScanRecord",
+    "Scanner",
+    "UnavailableScanner",
+]
