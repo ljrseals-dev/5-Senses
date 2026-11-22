@@ -39,6 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 openai = ["openai>=1.0.0"]
 anthropic = ["anthropic>=0.25.0"]
+mcp-client = ["mcp>=1.0.0; python_version >= \"3.11\""]
 dev = [
     "pytest>=7.0",
     "ruff>=0.4",
