@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shlex
 import threading
 from typing import Any
@@ -77,11 +78,21 @@ class MCPArchiveClient:
                     ]
                 return []
 
+    @staticmethod
+    def _fts_query(query: str) -> str:
+        # refactored-spoon currently passes queries to SQLite FTS5 MATCH.
+        # Quote plain tokens so natural-language punctuation cannot become FTS syntax.
+        tokens = re.findall(r"\w+", query, flags=re.UNICODE)
+        if not tokens:
+            raise ValueError("query must contain searchable words")
+        return " AND ".join('"'+token.replace('"', '""')+'"' for token in tokens)
+
     def search(self, query: str, limit: int = 8) -> list[dict[str, Any]]:
         if not isinstance(query, str) or not query.strip():
             raise ValueError("query must not be empty")
         if not 1 <= limit <= 50:
             raise ValueError("limit must be between 1 and 50")
+        safe_query = self._fts_query(query)
 
         async def bounded() -> list[dict[str, Any]]:
             return await asyncio.wait_for(

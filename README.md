@@ -130,7 +130,7 @@ python -m offline_doc_mcp.cli index --root . --db data/index.db
 
 # In the BODY OF SECRETS environment:
 pip install -e '.[mcp-client]'
-export BOS_OFFLINE_DOC_MCP_COMMAND="python -m offline_doc_mcp.mcp_server"
+export BOS_OFFLINE_DOC_MCP_COMMAND="/absolute/path/to/refactored-spoon/.venv/bin/python -m offline_doc_mcp.mcp_server"
 export BOS_OFFLINE_DOC_MCP_CWD="/absolute/path/to/refactored-spoon"
 body-of-secrets ask "your question" --mode ARCHIVE
 ```

@@ -54,3 +54,10 @@ def test_offline_mcp_retrieval_does_not_resolve_llm_provider(tmp_path, monkeypat
         answer = engine.ask("documented fact", mode="ARCHIVE")
         assert answer.classical is True
         assert answer.truth_status == "UNKNOWN"
+
+def test_fts_query_quotes_user_text_as_plain_terms():
+    from body_of_secrets.adapters.mcp_archive import MCPArchiveClient
+
+    assert MCPArchiveClient._fts_query('what is “ancient” navigation? OR *') == (
+        '"what" AND "is" AND "ancient" AND "navigation" AND "OR"'
+    )
