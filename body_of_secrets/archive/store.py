@@ -141,7 +141,7 @@ class Archive:
 
     def _import(self, path: Path, kind: str, **kw) -> str:
         """Single persistence chokepoint; scan exact bytes before any DB write."""
-        scan_record = self._ingest_gate.enforce(
+        self._ingest_gate.enforce(
             path,
             declared_ext=kw.pop("declared_ext", path.suffix.lower()),
         )
