@@ -114,11 +114,11 @@ class Archive:
         doc_id: str | None = None,
     ) -> str:
         # The text API scans the exact UTF-8 bytes it was given.
-        with tempfile.NamedTemporaryFile(suffix=".txt") as payload:
-            payload.write(content.encode("utf-8"))
-            payload.flush()
+        with tempfile.TemporaryDirectory(prefix="5senses-import-") as directory:
+            payload = Path(directory) / "document.txt"
+            payload.write_bytes(content.encode("utf-8"))
             return self._import(
-                Path(payload.name),
+                payload,
                 "text",
                 title=title,
                 content=content,
@@ -253,6 +253,12 @@ class Archive:
     # ------------------------------------------------------------------
 
     def search(self, query: str, *, limit: int = 5, k1: float = 1.2, b: float = 0.75) -> list[SearchHit]:
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+            raise ValueError("limit must be a positive integer")
+        if not math.isfinite(k1) or k1 <= 0:
+            raise ValueError("k1 must be finite and greater than zero")
+        if not math.isfinite(b) or not 0.0 <= b <= 1.0:
+            raise ValueError("b must be finite and between zero and one")
         query_terms = tokenize(query)
         if not query_terms:
             return []
