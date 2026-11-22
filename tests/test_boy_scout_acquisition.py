@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import datetime, timezone
 import json
 import sys
 from pathlib import Path
@@ -23,6 +24,19 @@ from body_of_secrets.scouting.models import (
 from body_of_secrets.scouting.corpora import CorpusCandidate, write_corpus_inventory
 from body_of_secrets.scouting.integration import import_text_collection
 from body_of_secrets.archive import Archive
+from body_of_secrets.scan import ScanRecord
+
+
+class CleanTextScanner:
+    def scan(self, path: Path, declared_ext: str) -> ScanRecord:
+        data = path.read_bytes()
+        return ScanRecord(
+            sha256=hashlib.sha256(data).hexdigest(), scanner="test-clean",
+            engine_version="test", sig_version="test", sig_age_hours=0.0,
+            verdict="clean", detail=None, magic_type="text/plain",
+            declared_extension=declared_ext,
+            scanned_at=datetime.now(timezone.utc).isoformat(),
+        )
 
 
 def test_sha256_rejects_zero_or_non_integer_chunk_size(tmp_path: Path):
@@ -168,7 +182,7 @@ def test_import_text_collection_records_stable_sha256_provenance(tmp_path: Path)
     source.mkdir()
     item = source / "record.txt"
     item.write_bytes(b"source text")
-    with Archive(tmp_path / "archive.db") as archive:
+    with Archive(tmp_path / "archive.db", scanner=CleanTextScanner()) as archive:
         report = import_text_collection(source, archive)
         assert report["imported"] == [str(item.resolve())]
         document = archive.list_documents()[0]
@@ -181,7 +195,7 @@ def test_import_text_collection_rejects_source_directory_symlink(tmp_path: Path)
     source.mkdir()
     alias = tmp_path / "alias"
     alias.symlink_to(source, target_is_directory=True)
-    with Archive(tmp_path / "archive.db") as archive:
+    with Archive(tmp_path / "archive.db", scanner=CleanTextScanner()) as archive:
         with pytest.raises(ValueError, match="source_dir must not be a symlink"):
             import_text_collection(alias, archive)
 
@@ -192,7 +206,7 @@ def test_import_text_collection_does_not_follow_file_symlinks(tmp_path: Path):
     target = tmp_path / "outside.txt"
     target.write_text("outside", encoding="utf-8")
     (source / "linked.txt").symlink_to(target)
-    with Archive(tmp_path / "archive.db") as archive:
+    with Archive(tmp_path / "archive.db", scanner=CleanTextScanner()) as archive:
         report = import_text_collection(source, archive)
         assert report["failed"] == [str(source / "linked.txt")]
         assert archive.count() == 0
@@ -201,6 +215,6 @@ def test_import_text_collection_does_not_follow_file_symlinks(tmp_path: Path):
 def test_import_text_collection_requires_positive_integer_limit(tmp_path: Path):
     source = tmp_path / "source"
     source.mkdir()
-    with Archive(tmp_path / "archive.db") as archive:
+    with Archive(tmp_path / "archive.db", scanner=CleanTextScanner()) as archive:
         with pytest.raises(ValueError, match="positive integer"):
             import_text_collection(source, archive, max_file_bytes=True)
