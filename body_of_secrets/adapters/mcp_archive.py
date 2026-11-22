@@ -47,7 +47,11 @@ class MCPArchiveClient:
                 "MCP client support requires Python 3.11+ and the 'mcp-client' extra"
             ) from exc
 
-        server = StdioServerParameters(\n            command=self.command,\n            args=self.args,\n            cwd=os.environ.get("BOS_OFFLINE_DOC_MCP_CWD") or None,\n        )
+        server = StdioServerParameters(
+            command=self.command,
+            args=self.args,
+            cwd=os.environ.get("BOS_OFFLINE_DOC_MCP_CWD") or None,
+        )
         async with stdio_client(server) as (read_stream, write_stream):
             async with ClientSession(read_stream, write_stream) as session:
                 await session.initialize()
