@@ -39,7 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 openai = ["openai>=1.0.0"]
 anthropic = ["anthropic>=0.25.0"]
-offline-docs = ["mcp>=1.0.0; python_version >= \"3.11\""]
+mcp-client = ["mcp>=1.0.0; python_version >= \"3.11\""]
 dev = [
     "pytest>=7.0",
     "ruff>=0.4",
@@ -52,7 +52,6 @@ all = [
 [project.scripts]
 body-of-secrets = "body_of_secrets.interface.cli:main"
 body-of-secrets-music = "body_of_secrets.music.cli:main"
-body-of-secrets-offline-docs = "body_of_secrets.offline_docs_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
