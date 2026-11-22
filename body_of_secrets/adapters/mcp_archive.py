@@ -96,7 +96,7 @@ class MCPArchiveClient:
 
         async def bounded() -> list[dict[str, Any]]:
             return await asyncio.wait_for(
-                self._search_async(query, limit), timeout=self.timeout
+                self._search_async(safe_query, limit), timeout=self.timeout
             )
 
         try:
