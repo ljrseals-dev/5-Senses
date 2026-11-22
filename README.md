@@ -112,6 +112,10 @@ This project is an original design. It is not affiliated with any government age
 
 #ArtificialIntelligence #ClassicalAI #NeuralNetworks #OpenSource #AIResearch
 
+## Standalone product boundary
+
+5-Senses (BODY OF SECRETS) is the standalone product. Claric belongs to the separate Stagecoach workstream and is not a 5-Senses component, dependency, service, or runtime requirement. The standalone product remains independently installable and operates without Stagecoach or Claric.
+
 ## Optional external offline document corpus (MCP)
 
 BODY OF SECRETS can query `ljrseals-dev/refactored-spoon` as a separate local MCP
