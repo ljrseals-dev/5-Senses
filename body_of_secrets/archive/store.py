@@ -7,7 +7,10 @@ import json
 import math
 import re
 import sqlite3
+import tempfile
 import time
+
+from body_of_secrets.scan import IngestGate, Scanner, UnavailableScanner
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -42,7 +45,13 @@ class SearchHit:
 class Archive:
     """SQLite-backed document archive with simple BM25 ranking."""
 
-    def __init__(self, db_path: str | Path = "data/archive.db"):
+    def __init__(
+        self,
+        db_path: str | Path = "data/archive.db",
+        *,
+        scanner: Scanner | None = None,
+    ):
+        self._ingest_gate = IngestGate(scanner or UnavailableScanner())
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(self.db_path))
@@ -104,70 +113,99 @@ class Archive:
         metadata: dict | None = None,
         doc_id: str | None = None,
     ) -> str:
+        # The text API scans the exact UTF-8 bytes it was given.
+        with tempfile.TemporaryDirectory(prefix="5senses-import-") as directory:
+            payload = Path(directory) / "document.txt"
+            payload.write_bytes(content.encode("utf-8"))
+            return self._import(
+                payload,
+                "text",
+                title=title,
+                content=content,
+                source=source,
+                tags=tags,
+                metadata=metadata,
+                doc_id=doc_id,
+                declared_ext=".txt",
+            )
+
+    def import_text_file(self, path: str | Path, *, source: str | None = None) -> str:
+        path = Path(path)
+        return self._import(
+            path,
+            "file",
+            title=path.name,
+            source=source or str(path),
+            declared_ext=path.suffix.lower(),
+        )
+
+    def _import(self, path: Path, kind: str, **kw) -> str:
+        """Single persistence chokepoint; scan exact bytes before any DB write."""
+        _scan_record, scanned_bytes = self._ingest_gate.enforce(
+            path,
+            declared_ext=kw.pop("declared_ext", path.suffix.lower()),
+        )
+        if kind == "file":
+            # Decode the exact immutable byte snapshot that was scanned.
+            content = scanned_bytes.decode("utf-8", errors="strict")
+            kw["content"] = content
+        elif kind != "text":
+            raise ValueError(f"unsupported import kind: {kind}")
+
+        title = kw["title"]
+        content = kw["content"]
+        source = kw["source"]
+        doc_id = kw.get("doc_id")
         if not doc_id:
-            # Hash the complete, unambiguously separated identity fields.
-            # Prefix-only hashing could silently overwrite distinct documents
-            # that share their first 200 characters.
             identity = json.dumps(
                 [source, title, content], ensure_ascii=False, separators=(",", ":")
             ).encode("utf-8")
             digest = hashlib.sha256(identity).hexdigest()[:16]
             doc_id = f"doc_{digest}"
 
-        tags = tags or []
-        metadata = metadata or {}
+        tags = kw.get("tags") or []
+        metadata = kw.get("metadata") or {}
         now = time.time()
-
         cur = self._conn.cursor()
-        cur.execute(
-            """
-            INSERT OR REPLACE INTO documents
-            (doc_id, title, content, source, tags, imported_at, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (doc_id, title, content, source, json.dumps(tags), now, json.dumps(metadata)),
-        )
-
-        # Remove old term stats for this doc
-        cur.execute("SELECT term, tf FROM doc_terms WHERE doc_id = ?", (doc_id,))
-        old = cur.fetchall()
-        for row in old:
-            cur.execute(
-                "UPDATE term_stats SET df = df - 1 WHERE term = ? AND df > 0",
-                (row["term"],),
-            )
-        cur.execute("DELETE FROM doc_terms WHERE doc_id = ?", (doc_id,))
-
-        # Index new terms
-        tokens = tokenize(content)
-        tf: dict[str, int] = {}
-        for t in tokens:
-            tf[t] = tf.get(t, 0) + 1
-
-        for term, count in tf.items():
-            cur.execute(
-                "INSERT INTO doc_terms (doc_id, term, tf) VALUES (?, ?, ?)",
-                (doc_id, term, count),
-            )
+        try:
+            cur.execute("BEGIN")
             cur.execute(
                 """
-                INSERT INTO term_stats (term, df) VALUES (?, 1)
-                ON CONFLICT(term) DO UPDATE SET df = df + 1
+                INSERT OR REPLACE INTO documents
+                (doc_id, title, content, source, tags, imported_at, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (term,),
+                (doc_id, title, content, source, json.dumps(tags), now, json.dumps(metadata)),
             )
-
-        self._conn.commit()
+            cur.execute("SELECT term, tf FROM doc_terms WHERE doc_id = ?", (doc_id,))
+            old = cur.fetchall()
+            for row in old:
+                cur.execute(
+                    "UPDATE term_stats SET df = df - 1 WHERE term = ? AND df > 0",
+                    (row["term"],),
+                )
+            cur.execute("DELETE FROM doc_terms WHERE doc_id = ?", (doc_id,))
+            tokens = tokenize(content)
+            tf: dict[str, int] = {}
+            for token in tokens:
+                tf[token] = tf.get(token, 0) + 1
+            for term, count in tf.items():
+                cur.execute(
+                    "INSERT INTO doc_terms (doc_id, term, tf) VALUES (?, ?, ?)",
+                    (doc_id, term, count),
+                )
+                cur.execute(
+                    """
+                    INSERT INTO term_stats (term, df) VALUES (?, 1)
+                    ON CONFLICT(term) DO UPDATE SET df = df + 1
+                    """,
+                    (term,),
+                )
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
         return doc_id
-
-    def import_text_file(self, path: str | Path, *, source: str | None = None) -> str:
-        path = Path(path)
-        content = path.read_text(encoding="utf-8", errors="replace")
-        return self.import_document(
-            title=path.name,
-            content=content,
-            source=source or str(path),
-        )
 
     # ------------------------------------------------------------------
     # Retrieval
@@ -215,6 +253,22 @@ class Archive:
     # ------------------------------------------------------------------
 
     def search(self, query: str, *, limit: int = 5, k1: float = 1.2, b: float = 0.75) -> list[SearchHit]:
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
+            raise ValueError("limit must be a positive integer")
+        if (
+            isinstance(k1, bool)
+            or not isinstance(k1, (int, float))
+            or not math.isfinite(k1)
+            or k1 <= 0
+        ):
+            raise ValueError("k1 must be finite and greater than zero")
+        if (
+            isinstance(b, bool)
+            or not isinstance(b, (int, float))
+            or not math.isfinite(b)
+            or not 0.0 <= b <= 1.0
+        ):
+            raise ValueError("b must be finite and between zero and one")
         query_terms = tokenize(query)
         if not query_terms:
             return []
@@ -228,10 +282,10 @@ class Archive:
         # Average document length
         cur.execute(
             """
-            SELECT AVG(length) AS avgdl FROM (
-                SELECT SUM(tf) AS length FROM doc_terms GROUP BY doc_id
-            )
-            """
+            SELECT CAST(COALESCE(SUM(tf), 0) AS REAL) / ? AS avgdl
+            FROM doc_terms
+            """,
+            (N,),
         )
         avgdl = cur.fetchone()["avgdl"] or 1.0
 
