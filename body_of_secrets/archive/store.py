@@ -255,9 +255,19 @@ class Archive:
     def search(self, query: str, *, limit: int = 5, k1: float = 1.2, b: float = 0.75) -> list[SearchHit]:
         if isinstance(limit, bool) or not isinstance(limit, int) or limit < 1:
             raise ValueError("limit must be a positive integer")
-        if not math.isfinite(k1) or k1 <= 0:
+        if (
+            isinstance(k1, bool)
+            or not isinstance(k1, (int, float))
+            or not math.isfinite(k1)
+            or k1 <= 0
+        ):
             raise ValueError("k1 must be finite and greater than zero")
-        if not math.isfinite(b) or not 0.0 <= b <= 1.0:
+        if (
+            isinstance(b, bool)
+            or not isinstance(b, (int, float))
+            or not math.isfinite(b)
+            or not 0.0 <= b <= 1.0
+        ):
             raise ValueError("b must be finite and between zero and one")
         query_terms = tokenize(query)
         if not query_terms:
@@ -272,10 +282,10 @@ class Archive:
         # Average document length
         cur.execute(
             """
-            SELECT AVG(length) AS avgdl FROM (
-                SELECT SUM(tf) AS length FROM doc_terms GROUP BY doc_id
-            )
-            """
+            SELECT CAST(COALESCE(SUM(tf), 0) AS REAL) / ? AS avgdl
+            FROM doc_terms
+            """,
+            (N,),
         )
         avgdl = cur.fetchone()["avgdl"] or 1.0
 
