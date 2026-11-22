@@ -55,7 +55,7 @@ def test_import_and_search():
 def test_get_document():
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "test.db"
-        with Archive(db) as archive:
+        with Archive(db, scanner=CleanTextScanner()) as archive:
             doc_id = archive.import_document(
                 title="PDP",
                 content="Parallel Distributed Processing volumes introduced connectionism to a wide audience.",
@@ -71,7 +71,7 @@ def test_documents_with_same_prefix_keep_distinct_ids():
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "test.db"
         prefix = "same opening text " * 20
-        with Archive(db) as archive:
+        with Archive(db, scanner=CleanTextScanner()) as archive:
             first_id = archive.import_document(
                 title="Reference A",
                 content=prefix + "unique ending alpha",
