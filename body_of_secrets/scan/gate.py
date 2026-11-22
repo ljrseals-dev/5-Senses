@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
@@ -57,7 +58,7 @@ class IngestGate:
     def __init__(self, scanner: Scanner):
         self._scanner = scanner
 
-    def enforce(self, path: Path, *, declared_ext: str) -> ScanRecord:
+    def enforce(self, path: Path, *, declared_ext: str) -> tuple[ScanRecord, bytes]:
         path = Path(path)
         try:
             data = path.read_bytes()
@@ -72,8 +73,16 @@ class IngestGate:
             raise IngestRejected(
                 f"unsupported or mismatched document type: {magic} ({declared_ext or 'no extension'})"
             )
+        # Scan an immutable private snapshot, not the caller-controlled path.
         try:
-            record = self._scanner.scan(path, declared_ext)
+            with tempfile.NamedTemporaryFile(suffix=declared_ext or ".txt") as snapshot:
+                snapshot.write(data)
+                snapshot.flush()
+                record = self._scanner.scan(Path(snapshot.name), declared_ext)
+                if hashlib.sha256(Path(snapshot.name).read_bytes()).hexdigest() != digest:
+                    raise IngestRejected("scanner modified the document snapshot")
+        except IngestRejected:
+            raise
         except Exception as exc:
             raise IngestRejected(f"document scanner failed: {type(exc).__name__}") from exc
         if record.sha256.lower() != digest:
@@ -92,4 +101,4 @@ class IngestGate:
             raise IngestRejected("scanner cannot substantiate a clean verdict")
         if record.verdict != "clean":
             raise IngestRejected(f"document scan did not return clean: {record.verdict}")
-        return record
+        return record, data
