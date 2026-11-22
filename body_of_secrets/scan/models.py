@@ -17,12 +17,7 @@ ScanVerdict = Literal["clean", "malware", "degraded"]
 
 @dataclass(frozen=True)
 class ScanRecord:
-    """Immutable record of a scan decision for one exact document byte stream.
-
-    sig_age_hours and engine/signature versions may be None when the scanner
-    could not provide trustworthy metadata. Such a record must not be
-    interpreted as clean; callers should use verdict="degraded".
-    """
+    """Immutable record of a scan decision for one exact document byte stream."""
 
     sha256: str
     scanner: str
@@ -36,21 +31,34 @@ class ScanRecord:
     scanned_at: str
 
     def __post_init__(self) -> None:
-        if not re.fullmatch(r"[0-9a-fA-F]{64}", self.sha256):
+        if not isinstance(self.sha256, str) or not re.fullmatch(r"[0-9a-fA-F]{64}", self.sha256):
             raise ValueError("sha256 must be exactly 64 hexadecimal characters")
-        if not self.scanner.strip():
-            raise ValueError("scanner must not be empty")
+        for name, value in (
+            ("scanner", self.scanner),
+            ("magic_type", self.magic_type),
+            ("declared_extension", self.declared_extension),
+            ("scanned_at", self.scanned_at),
+        ):
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{name} must be a non-empty string")
+        if self.engine_version is not None and not isinstance(self.engine_version, str):
+            raise ValueError("engine_version must be a string or None")
+        if self.sig_version is not None and not isinstance(self.sig_version, str):
+            raise ValueError("sig_version must be a string or None")
+        if self.detail is not None and not isinstance(self.detail, str):
+            raise ValueError("detail must be a string or None")
         if self.verdict not in ("clean", "malware", "degraded"):
             raise ValueError("verdict must be clean, malware, or degraded")
         if self.sig_age_hours is not None and (
-            not math.isfinite(self.sig_age_hours) or self.sig_age_hours < 0
+            isinstance(self.sig_age_hours, bool)
+            or not isinstance(self.sig_age_hours, (int, float))
+            or not math.isfinite(self.sig_age_hours)
+            or self.sig_age_hours < 0
         ):
             raise ValueError("sig_age_hours must be finite and non-negative")
-        if not self.magic_type.strip():
-            raise ValueError("magic_type must not be empty")
-        if not self.scanned_at.strip():
-            raise ValueError("scanned_at must be an ISO-8601 timestamp")
         try:
-            datetime.fromisoformat(self.scanned_at.replace("Z", "+00:00"))
+            timestamp = datetime.fromisoformat(self.scanned_at.replace("Z", "+00:00"))
         except ValueError as exc:
             raise ValueError("scanned_at must be an ISO-8601 timestamp") from exc
+        if timestamp.tzinfo is None or timestamp.utcoffset() is None:
+            raise ValueError("scanned_at must include a timezone")
