@@ -65,6 +65,9 @@ class IngestGate:
             raise IngestRejected(f"cannot read document for scanning: {exc}") from exc
         digest = hashlib.sha256(data).hexdigest()
         magic = _magic_type(data)
+        allowed_extensions = {".txt", ".md", ".rst", ".text"}
+        if declared_ext.lower() not in allowed_extensions:
+            raise IngestRejected(f"unsupported declared extension: {declared_ext or 'none'}")
         if magic != "text/plain":
             raise IngestRejected(
                 f"unsupported or mismatched document type: {magic} ({declared_ext or 'no extension'})"
@@ -77,6 +80,16 @@ class IngestGate:
             raise IngestRejected("scanner verdict is not bound to the current document bytes")
         if record.magic_type != magic:
             raise IngestRejected("scanner MIME result does not match inspected document bytes")
+        if (
+            record.verdict == "clean"
+            and (
+                not record.engine_version
+                or not record.sig_version
+                or record.sig_age_hours is None
+                or record.scanner == "unavailable"
+            )
+        ):
+            raise IngestRejected("scanner cannot substantiate a clean verdict")
         if record.verdict != "clean":
             raise IngestRejected(f"document scan did not return clean: {record.verdict}")
         return record
