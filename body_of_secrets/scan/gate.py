@@ -65,7 +65,7 @@ class IngestGate:
             raise IngestRejected(f"cannot read document for scanning: {exc}") from exc
         digest = hashlib.sha256(data).hexdigest()
         magic = _magic_type(data)
-        allowed_extensions = {".txt", ".md", ".rst", ".text"}
+        allowed_extensions = {".txt", ".md", ".rst", ".text", ".pdf"}
         if declared_ext.lower() not in allowed_extensions:
             raise IngestRejected(f"unsupported declared extension: {declared_ext or 'none'}")
         if magic != "text/plain":
