@@ -142,12 +142,52 @@ def test_same_doc_id_with_changed_bytes_is_scanned_again_and_rejected():
             path.write_text("changed payload", encoding="utf-8")
             scanner.reject = True
             try:
-                archive._import(
-                    path, "file", title=path.name, source=str(path),
-                    declared_ext=".txt", doc_id=doc_id,
+                archive.import_document(
+                    title=path.name,
+                    content="changed payload",
+                    source=str(path),
+                    doc_id=doc_id,
                 )
             except IngestRejected:
                 pass
             else:
                 raise AssertionError("changed content must be scanned and rejected")
             assert archive.get(doc_id).content == original
+
+
+
+def test_clean_verdict_without_signature_metadata_is_rejected():
+    class UnsubstantiatedCleanScanner(CleanTextScanner):
+        def scan(self, path: Path, declared_ext: str) -> ScanRecord:
+            record = super().scan(path, declared_ext)
+            return ScanRecord(
+                sha256=record.sha256, scanner="scanner-without-signatures",
+                engine_version=None, sig_version=None, sig_age_hours=None,
+                verdict="clean", detail=None, magic_type=record.magic_type,
+                declared_extension=declared_ext, scanned_at=record.scanned_at,
+            )
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "document.txt"
+        path.write_text("ordinary text", encoding="utf-8")
+        with Archive(Path(tmp) / "test.db", scanner=UnsubstantiatedCleanScanner()) as archive:
+            try:
+                archive.import_text_file(path)
+            except IngestRejected as exc:
+                assert "cannot substantiate" in str(exc)
+            else:
+                raise AssertionError("unsubstantiated clean verdict must be rejected")
+            assert archive.count() == 0
+
+
+def test_pdf_extension_is_rejected_even_when_payload_is_text():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "document.pdf"
+        path.write_text("ordinary text", encoding="utf-8")
+        with Archive(Path(tmp) / "test.db", scanner=CleanTextScanner()) as archive:
+            try:
+                archive.import_text_file(path)
+            except IngestRejected as exc:
+                assert "unsupported declared extension" in str(exc)
+            else:
+                raise AssertionError("unsupported extension must be rejected")
+            assert archive.count() == 0
