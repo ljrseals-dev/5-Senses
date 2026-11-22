@@ -111,3 +111,38 @@ MIT. See `LICENSE`.
 This project is an original design. It is not affiliated with any government agency, intelligence service, or commercial LLM provider.
 
 #ArtificialIntelligence #ClassicalAI #NeuralNetworks #OpenSource #AIResearch
+
+## Optional external offline document corpus (MCP)
+
+BODY OF SECRETS can query `ljrseals-dev/refactored-spoon` as a separate local MCP
+service. The service owns acquisition, processing, and its own index; BODY OF
+SECRETS does not vendor its runtime package or copy remote documents into its
+Archive. Search results retain the upstream title and source path as provenance.
+
+Install `refactored-spoon` in its own environment from its repository root,
+acquire and index the corpus there, then configure BODY OF SECRETS:
+
+```bash
+# In the refactored-spoon checkout / environment:
+pip install -e .
+python -m offline_doc_mcp.cli acquire --service project_gutenberg
+python -m offline_doc_mcp.cli index --root . --db data/index.db
+
+# In the BODY OF SECRETS environment:
+pip install -e '.[mcp-client]'
+export BOS_OFFLINE_DOC_MCP_COMMAND="python -m offline_doc_mcp.mcp_server"
+export BOS_OFFLINE_DOC_MCP_CWD="/absolute/path/to/refactored-spoon"
+body-of-secrets ask "your question" --mode ARCHIVE
+```
+
+The MCP server is started on demand over stdio for each query. Set
+`BOS_OFFLINE_DOC_MCP_TIMEOUT` (seconds, default 15) to adjust the request
+deadline. If the command is unset, MCP is disabled. If the service is missing,
+times out, or returns an error, the Brain falls back to the local Archive.
+CLASSICAL, ARCHIVE, and AUTO retrieval never invoke an LLM provider. The MCP
+client extra is optional and requires Python 3.11+; the core package retains
+Python 3.10 compatibility.
+
+The upstream acquisition adapters may be placeholders depending on the source;
+successful acquisition/indexing must be confirmed in the refactored-spoon
+environment before expecting search results.
