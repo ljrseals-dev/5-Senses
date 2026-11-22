@@ -141,13 +141,13 @@ class Archive:
 
     def _import(self, path: Path, kind: str, **kw) -> str:
         """Single persistence chokepoint; scan exact bytes before any DB write."""
-        self._ingest_gate.enforce(
+        _scan_record, scanned_bytes = self._ingest_gate.enforce(
             path,
             declared_ext=kw.pop("declared_ext", path.suffix.lower()),
         )
         if kind == "file":
-            # Decode only after the byte stream has passed the gate.
-            content = path.read_bytes().decode("utf-8", errors="strict")
+            # Decode the exact immutable byte snapshot that was scanned.
+            content = scanned_bytes.decode("utf-8", errors="strict")
             kw["content"] = content
         elif kind != "text":
             raise ValueError(f"unsupported import kind: {kind}")
