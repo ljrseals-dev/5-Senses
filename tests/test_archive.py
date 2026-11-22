@@ -187,7 +187,7 @@ def test_pdf_extension_is_rejected_even_when_payload_is_text():
             try:
                 archive.import_text_file(path)
             except IngestRejected as exc:
-                assert "unsupported declared extension" in str(exc)
+                assert "extension/signature mismatch" in str(exc)
             else:
-                raise AssertionError("unsupported extension must be rejected")
+                raise AssertionError("PDF extension with text payload must be rejected")
             assert archive.count() == 0
