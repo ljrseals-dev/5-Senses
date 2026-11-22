@@ -191,3 +191,55 @@ def test_pdf_extension_is_rejected_even_when_payload_is_text():
             else:
                 raise AssertionError("PDF extension with text payload must be rejected")
             assert archive.count() == 0
+
+
+def test_empty_document_is_rejected():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "empty.txt"
+        path.write_bytes(b"")
+        with Archive(Path(tmp) / "test.db", scanner=CleanTextScanner()) as archive:
+            try:
+                archive.import_text_file(path)
+            except IngestRejected as exc:
+                assert "empty documents" in str(exc)
+            else:
+                raise AssertionError("empty document must be rejected")
+            assert archive.count() == 0
+
+
+def test_scanner_must_return_a_scan_record():
+    class InvalidScanner:
+        def scan(self, path: Path, declared_ext: str):
+            return None
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "document.txt"
+        path.write_text("ordinary text", encoding="utf-8")
+        with Archive(Path(tmp) / "test.db", scanner=InvalidScanner()) as archive:
+            try:
+                archive.import_text_file(path)
+            except IngestRejected as exc:
+                assert "invalid scan record" in str(exc)
+            else:
+                raise AssertionError("invalid scanner result must be rejected")
+            assert archive.count() == 0
+
+
+def test_search_rejects_invalid_bm25_parameters():
+    with tempfile.TemporaryDirectory() as tmp:
+        with Archive(Path(tmp) / "test.db", scanner=CleanTextScanner()) as archive:
+            for kwargs in (
+                {"limit": 0},
+                {"limit": -1},
+                {"k1": 0.0},
+                {"k1": float("nan")},
+                {"b": -0.1},
+                {"b": 1.1},
+                {"b": float("inf")},
+            ):
+                try:
+                    archive.search("query", **kwargs)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(f"invalid search parameters accepted: {kwargs}")
