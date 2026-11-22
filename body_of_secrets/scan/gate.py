@@ -24,9 +24,9 @@ def _magic_type(data: bytes) -> str:
         return "application/octet-stream"
     if data.startswith(b"%PDF-"):
         return "application/pdf"
-    if data.startswith(b"\\x7fELF"):
+    if data.startswith(b"\x7fELF"):
         return "application/x-elf"
-    if data.startswith(b"PK\\x03\\x04"):
+    if data.startswith(b"PK\x03\x04"):
         return "application/zip"
     if b"\\x00" in data:
         return "application/octet-stream"
