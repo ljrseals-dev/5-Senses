@@ -28,7 +28,7 @@ def _magic_type(data: bytes) -> str:
         return "application/x-elf"
     if data.startswith(b"PK\x03\x04"):
         return "application/zip"
-    if b"\\x00" in data:
+    if b"\x00" in data:
         return "application/octet-stream"
     try:
         data.decode("utf-8", errors="strict")
