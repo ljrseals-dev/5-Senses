@@ -20,13 +20,15 @@ class Scanner(Protocol):
 
 
 def _magic_type(data: bytes) -> str:
+    if not data:
+        return "application/octet-stream"
     if data.startswith(b"%PDF-"):
         return "application/pdf"
-    if data.startswith(b"\x7fELF"):
+    if data.startswith(b"\\x7fELF"):
         return "application/x-elf"
-    if data.startswith(b"PK\x03\x04"):
+    if data.startswith(b"PK\\x03\\x04"):
         return "application/zip"
-    if b"\x00" in data:
+    if b"\\x00" in data:
         return "application/octet-stream"
     try:
         data.decode("utf-8", errors="strict")
@@ -56,20 +58,25 @@ class UnavailableScanner:
 
 class IngestGate:
     def __init__(self, scanner: Scanner):
+        if scanner is None:
+            raise ValueError("scanner must be configured")
         self._scanner = scanner
 
     def enforce(self, path: Path, *, declared_ext: str) -> tuple[ScanRecord, bytes]:
         path = Path(path)
+        extension = (declared_ext or "").lower()
         try:
             data = path.read_bytes()
         except OSError as exc:
             raise IngestRejected(f"cannot read document for scanning: {exc}") from exc
+        if not data:
+            raise IngestRejected("empty documents cannot be imported")
         digest = hashlib.sha256(data).hexdigest()
         magic = _magic_type(data)
         allowed_extensions = {".txt", ".md", ".rst", ".text", ".pdf"}
-        if declared_ext.lower() not in allowed_extensions:
-            raise IngestRejected(f"unsupported declared extension: {declared_ext or 'none'}")
-        if declared_ext.lower() == ".pdf" and magic != "application/pdf":
+        if extension not in allowed_extensions:
+            raise IngestRejected(f"unsupported declared extension: {extension or 'none'}")
+        if extension == ".pdf" and magic != "application/pdf":
             raise IngestRejected(
                 f"extension/signature mismatch: .pdf declared but detected {magic}"
             )
@@ -77,22 +84,26 @@ class IngestGate:
             raise IngestRejected(
                 f"unsupported document type for text archive: {magic}"
             )
-        # Scan an immutable private snapshot, not the caller-controlled path.
+        # Scan a closed, private snapshot so scanners can reopen it on Windows too.
         try:
-            with tempfile.NamedTemporaryFile(suffix=declared_ext or ".txt") as snapshot:
-                snapshot.write(data)
-                snapshot.flush()
-                record = self._scanner.scan(Path(snapshot.name), declared_ext)
-                if hashlib.sha256(Path(snapshot.name).read_bytes()).hexdigest() != digest:
+            with tempfile.TemporaryDirectory(prefix="5senses-scan-") as directory:
+                snapshot = Path(directory) / ("document" + (extension or ".txt"))
+                snapshot.write_bytes(data)
+                record = self._scanner.scan(snapshot, extension)
+                if hashlib.sha256(snapshot.read_bytes()).hexdigest() != digest:
                     raise IngestRejected("scanner modified the document snapshot")
         except IngestRejected:
             raise
         except Exception as exc:
             raise IngestRejected(f"document scanner failed: {type(exc).__name__}") from exc
+        if not isinstance(record, ScanRecord):
+            raise IngestRejected("scanner returned an invalid scan record")
         if record.sha256.lower() != digest:
             raise IngestRejected("scanner verdict is not bound to the current document bytes")
         if record.magic_type != magic:
             raise IngestRejected("scanner MIME result does not match inspected document bytes")
+        if record.declared_extension.lower() != extension:
+            raise IngestRejected("scanner extension result does not match the declared extension")
         if (
             record.verdict == "clean"
             and (
