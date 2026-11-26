@@ -40,10 +40,12 @@ dependencies = [
 openai = ["openai>=1.0.0"]
 anthropic = ["anthropic>=0.25.0"]
 dev = [
+    "numpy>=1.24",
     "pytest>=7.0",
     "ruff>=0.4",
     "mypy>=1.8",
 ]
+compression = ["numpy>=1.24"]
 all = [
     "body-of-secrets[openai,anthropic,dev]",
 ]
