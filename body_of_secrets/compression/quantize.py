@@ -22,6 +22,8 @@ def quantize_cdf(
         raise ValueError("min_freq must be an integer")
     total = int(total)
     min_freq = int(min_freq)
+    if total > np.iinfo(np.int64).max:
+        raise ValueError("total must fit in an int64 CDF")
     if min_freq < 1:
         raise ValueError("min_freq must be at least 1")
 
