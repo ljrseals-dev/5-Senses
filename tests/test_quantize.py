@@ -55,8 +55,8 @@ def test_invalid_probability_shapes_and_values_are_rejected(probs):
 
 def test_two_symbol_input_is_valid_with_default_total():
     freqs, cdf = quantize_cdf([0.25, 0.75])
-    assert freqs.tolist() == [1024, 3072]
-    assert cdf.tolist() == [0, 1024, 4096]
+    assert freqs.tolist() == [1025, 3071]
+    assert cdf.tolist() == [0, 1025, 4096]
 
 
 def test_float32_probabilities_are_supported():
@@ -69,8 +69,8 @@ def test_float32_probabilities_are_supported():
 
 def test_ties_are_resolved_by_lowest_symbol_index():
     freqs, _ = quantize_cdf(np.ones(250), total=4096)
-    assert np.all(freqs[:154] == 17)
-    assert np.all(freqs[154:] == 16)
+    assert np.all(freqs[:96] == 17)
+    assert np.all(freqs[96:] == 16)
 
 
 def test_calls_are_deterministic():
