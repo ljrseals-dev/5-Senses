@@ -97,3 +97,19 @@ def test_large_finite_weights_do_not_overflow_normalization():
     freqs, cdf = quantize_cdf([1e308, 1e308, 1e307])
     assert int(freqs.sum()) == 4096
     assert cdf[-1] == 4096
+
+
+
+def test_larger_total_65536_is_supported_by_quantizer():
+    probs = np.zeros(256)
+    probs[7] = 1.0
+    freqs, cdf = quantize_cdf(probs, total=65536)
+    assert int(freqs.sum()) == 65536
+    assert freqs[7] == 65281
+    assert np.all(np.delete(freqs, 7) == 1)
+    assert cdf[-1] == 65536
+
+
+def test_total_larger_than_int64_cdf_capacity_is_rejected():
+    with pytest.raises(ValueError):
+        quantize_cdf([0.5, 0.5], total=np.iinfo(np.int64).max + 1)
